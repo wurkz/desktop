@@ -1,0 +1,18 @@
+{
+    "name": "@zorviz/db",
+    "version": "0.0.0",
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "scripts": {
+        "generate:sqlite": "drizzle-kit generate:sqlite --schema=./src/schema.sqlite.ts --out=./migrations/sqlite",
+        "generate:pg": "drizzle-kit generate:pg --schema=./src/schema.postgres.ts --out=./migrations/pg"
+    },
+    "dependencies": {
+        "drizzle-orm": "^0.29.3",
+        "@zorviz/core": "*"
+    },
+    "devDependencies": {
+        "drizzle-kit": "^0.20.13",
+        "typescript": "^5.0.0"
+    }
+}
