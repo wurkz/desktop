@@ -159,3 +159,27 @@ on approval** (BACK-3-006 — the link column exists but stock isn't decremented
 - `apps/desktop/src/features/repair/components/EstimateBuilder.tsx` (new), `apps/desktop/src/pages/job-ticket.tsx`
 
 ---
+
+## ✅ BACK-2-C006 · Job Ticket — Customer Approval
+
+**Completed:** 2026-07-04
+**Original Backlog ID:** BACK-2-006
+
+**What was implemented:**
+- Rust `POST /api/orders/:id/approve` — records `approval_proof` as JSON `{approved_by, method, at}` and
+  moves status `estimate → approved`. `order_detail` parses `approval_proof` to an object.
+- `ApprovalDialog`: "Mark Approved" on an estimate → capture approver name + method (In person / Phone /
+  Message) → approve. Ticket then shows "Approved by <name> · <method>" and the Approved status badge.
+
+**Verification:** cargo check + vite build clean; curl approve → `approved` + parsed `approval_proof`;
+Playwright UI flow (new ticket → estimate → Mark Approved → Approve → Approved record shown), zero console errors.
+
+**⚠️ Per D5 deviations (intentional):** simple approval record only — **no signature pad, no OTP**.
+**Inventory stock deduction on approval NOT done** — tracked in BACK-3-006.
+
+**Key files:**
+- `apps/desktop/src-tauri/src/api_data.rs`, `apps/desktop/src-tauri/src/server.rs`
+- `apps/desktop/src/lib/orders-api.ts`, `apps/desktop/src/features/repair/components/ApprovalDialog.tsx` (new)
+- `apps/desktop/src/pages/job-ticket.tsx`
+
+---

@@ -6,6 +6,7 @@ import { formatMoney } from "@zorviz/core";
 import { getOrder, type JobTicket, type InspectionItem } from "../lib/orders-api";
 import { StatusBadge } from "../components/status-badge";
 import { EstimateBuilder } from "../features/repair/components/EstimateBuilder";
+import { ApprovalDialog } from "../features/repair/components/ApprovalDialog";
 import { useAppConfigStore } from "../stores/app-config";
 
 function assetTitle(asset?: JobTicket["asset"]): string {
@@ -27,6 +28,7 @@ export default function JobTicketPage() {
     const [ticket, setTicket] = useState<JobTicket | null>(null);
     const [error, setError] = useState("");
     const [estimateOpen, setEstimateOpen] = useState(false);
+    const [approvalOpen, setApprovalOpen] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -147,6 +149,17 @@ export default function JobTicketPage() {
                                 ) : (
                                     <span className="text-muted-foreground">No estimate yet.</span>
                                 )}
+
+                                {ticket.status === "estimate" && ticket.items && ticket.items.length > 0 && (
+                                    <Button className="w-full mt-1" onClick={() => setApprovalOpen(true)}>
+                                        Mark Approved
+                                    </Button>
+                                )}
+                                {ticket.approval_proof && (
+                                    <div className="text-xs text-muted-foreground border-t pt-2">
+                                        Approved by {ticket.approval_proof.approved_by} · {ticket.approval_proof.method}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -155,6 +168,12 @@ export default function JobTicketPage() {
                             open={estimateOpen}
                             onOpenChange={setEstimateOpen}
                             onSaved={setTicket}
+                        />
+                        <ApprovalDialog
+                            ticket={ticket}
+                            open={approvalOpen}
+                            onOpenChange={setApprovalOpen}
+                            onApproved={setTicket}
                         />
                     </>
                 )}

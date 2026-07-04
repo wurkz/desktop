@@ -34,6 +34,7 @@ export interface JobTicket {
     asset?: { id: string; type: string; specs: Record<string, unknown> };
     customer?: { id: string; name: string; phone: string | null } | null;
     items?: OrderItem[];
+    approval_proof?: { approved_by: string; method: string; at: number } | null;
 }
 
 export interface EstimateItemInput {
@@ -49,6 +50,13 @@ export function saveEstimate(
     input: { items: EstimateItemInput[]; discount: number }
 ): Promise<JobTicket> {
     return api.put<JobTicket>(`/api/orders/${orderId}/estimate`, input);
+}
+
+export function approveOrder(
+    orderId: string,
+    input: { approved_by: string; method: string }
+): Promise<JobTicket> {
+    return api.post<JobTicket>(`/api/orders/${orderId}/approve`, input);
 }
 
 export function createOrder(input: {

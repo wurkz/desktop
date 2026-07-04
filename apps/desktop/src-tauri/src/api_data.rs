@@ -313,6 +313,35 @@ pub async fn get_order(
     order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
 }
 
+#[derive(Deserialize)]
+pub struct ApproveReq {
+    approved_by: String,
+    method: String, // verbal | phone | in_person
+}
+
+/// POST /api/orders/:id/approve — record a simple approval (who + how) and move to `approved`.
+/// No signature/OTP (D5). Auth required. (Stock deduction on approval is BACK-3-006, later.)
+pub async fn approve_order(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<ApproveReq>,
+) -> Result<Json<Value>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let now = now_ms();
+    let proof = json!({ "approved_by": req.approved_by.trim(), "method": req.method, "at": now }).to_string();
+    sqlx::query("UPDATE orders SET status = 'approved', approval_proof = ?, updated_at = ? WHERE id = ?")
+        .bind(&proof)
+        .bind(now)
+        .bind(&id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
+}
+
 // Build a job-ticket detail object: order fields (inspection parsed) + nested asset + customer.
 async fn order_detail(state: &ApiState, id: &str) -> Option<Value> {
     let row = sqlx::query("SELECT * FROM orders WHERE id = ? LIMIT 1")
@@ -323,6 +352,7 @@ async fn order_detail(state: &ApiState, id: &str) -> Option<Value> {
         .flatten()?;
     let mut obj = row_to_json(&row);
     parse_json_field(&mut obj, "inspection");
+    parse_json_field(&mut obj, "approval_proof");
 
     if let Some(asset_id) = obj.get("asset_id").and_then(|v| v.as_str()).map(String::from) {
         if let Ok(Some(arow)) = sqlx::query("SELECT * FROM assets WHERE id = ? LIMIT 1")

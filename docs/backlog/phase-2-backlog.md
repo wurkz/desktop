@@ -40,23 +40,6 @@ No update or delete operations exist in `AssetRepository`. Required for correcti
 
 ---
 
-## BACK-2-006 · Job Ticket — Customer Approval
-
-**Priority:** 🟡 Medium  
-**Area:** `apps/desktop/src/features/repair/`  
-**Description:**  
-Customer must approve the estimate before work begins.
-
-**Acceptance Criteria:**
-- [ ] "Request Approval" button on an ESTIMATE ticket
-- [ ] **Local approval:** On-screen signature pad component (canvas-based)
-- [ ] Signature saved as base64 PNG stored in `orders.approval_proof`
-- [ ] `orders.status` updated to `approved`
-- [ ] Optional: 4-digit OTP approval flow (generated locally, customer reads it back verbally)
-- [ ] Inventory allocation: reserved qty deducted from `stock_on_hand` for all Part line items
-
----
-
 ## BACK-2-007 · Mechanic Mobile — "My Jobs" View
 
 **Priority:** 🔴 High (marked CRITICAL in plan)  

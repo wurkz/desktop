@@ -109,6 +109,7 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
         .route("/api/orders", post(api_data::create_order))
         .route("/api/orders/:id", get(api_data::get_order))
         .route("/api/orders/:id/estimate", axum::routing::put(api_data::save_estimate))
+        .route("/api/orders/:id/approve", post(api_data::approve_order))
         .route(
             "/api/inventory",
             get(api_data::search_inventory).post(api_data::create_inventory),
