@@ -56,3 +56,61 @@
 - `packages/ui/src/components/theme-provider.tsx`, `packages/ui/src/components/theme-switcher.tsx`
 
 ---
+
+## ✅ BACK-0-C002 · Consolidated v1 Schema Migration
+
+**Completed:** 2026-07-04
+**Original Backlog ID:** BACK-0-002
+**Traces to:** D3, D12, D13, D14, D19
+
+**What was implemented:**
+- **Squashed migrations.** Since all business tables were empty (verified) and nothing has shipped,
+  replaced the two drizzle-generated migrations (`0000_charming_gunslinger`, `0001_clumsy_pet_avengers`)
+  and the dead drizzle `meta/` folder with a single clean baseline `0000_init.sql`. (SQLite can't change
+  a column's type in place, so a rebuild was needed anyway — a clean baseline is simpler than ALTERs.)
+- **Money → integer centavos (D12):** all money columns are now `INTEGER` minor units — `orders`
+  (subtotal, tax, discount, total), `order_items` (unit_price, total), `inventory` (unit_cost, unit_price).
+  Rates (`tax_rate`) and quantities/stock remain `REAL`.
+- **Customers table (D3):** new `customers` (id, tenant_id, name, phone, email, address, timestamps).
+  `assets.owner_id` and `orders.customer_id` / `bookings.customer_id` now FK to `customers`, not `users`.
+- **Order/intake fields:** `orders` gained `customer_id`, `customer_complaint`, `assigned_mechanic_id`,
+  `receipt_number` (all nullable).
+- **Status enum (D19):** `orders.status` type is the canonical `OrderStatus`
+  (`triage | estimate | approved | in_progress | done | paid | cancelled`); SQL default `'triage'`.
+- **app_config additions (D13, D14):** `tax_rate` (nullable — no baked default), `address`,
+  `contact_phone`, `contact_email`, `logo_path`, `tax_registration_id`, `custom_fields` (JSON text).
+- **Timestamps standardized to ms:** removed all `unixepoch()` (seconds) defaults; timestamp columns are
+  `INTEGER NOT NULL` with no default — the app always supplies `Date.now()` (ms). Reconciles the previous
+  seconds-vs-ms mismatch.
+- **Kysely types rewritten** to match, incl. a `Nullable<T> = ColumnType<...>` helper so nullable columns
+  are optional on insert (wizard/repos need not pass `null` for every field). Added `CustomersTable`,
+  `OrderStatus`, and `customers` to the `Database` interface.
+- **Money helpers** added to `@zorviz/core` (`formatMoney`, `toCentavos`, `fromCentavos`); `calculateTax`
+  / `calculateOrderTotal` switched to integer-centavo math; removed the baked `0.12` tax default (D13).
+- **tenant_id mismatch fixed:** added `DEV_TENANT_ID` constant in `@zorviz/core`; asset repo and both
+  seeders now use it (previously `'default-tenant'` vs `'dev-tenant-id'` diverged).
+- Added helpful indexes (customers.phone, orders.asset_id/status/assigned_mechanic_id, bookings.scheduled_time).
+
+**Verification:**
+- Migration validated on a throwaway SQLite DB (FKs enforce; integer-centavos inserts succeed).
+- `tsc --noEmit` + `npm run build` (tsc + vite) → exit 0.
+- Booted the real app (`tauri dev`): sqlx applied migration `version 0 "init" success=1`; the live
+  `zorviz.db` has all 9 tables incl. `customers`, `orders` money columns as `INTEGER`, the new intake
+  columns, and the expanded `app_config`. Server started normally.
+
+**⚠️ Partial / follow-up:**
+- The AC asked that `tenant_id` be sourced *from* `app_config`. Interim done = single shared constant
+  (no more mismatch). Full runtime wiring (repos read the active tenant from `app_config`) is deferred to
+  the **setup wizard (BACK-0-003)**, where real tenant/config context is established.
+- Existing dev DBs must be deleted to pick up the squashed baseline (done for the local dev DB). Any other
+  dev machine will hit an sqlx checksum error until its `zorviz.db` is removed — acceptable pre-ship.
+
+**Key files:**
+- `packages/db/migrations/sqlite/0000_init.sql` (new; old migrations + `meta/` removed)
+- `packages/db/src/types.ts`
+- `packages/core/src/money.ts` (new), `packages/core/src/constants.ts` (new),
+  `packages/core/src/calculations.ts`, `packages/core/src/index.ts`
+- `packages/features/repair/src/dal/asset.repo.ts`
+- `apps/desktop/src/lib/seeder.ts`, `packages/db/src/seed.ts`
+
+---

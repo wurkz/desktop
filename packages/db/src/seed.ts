@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import os from 'os';
+import { DEV_TENANT_ID } from '@zorviz/core';
 
 // Config
 const BUNDLE_ID = 'com.zorviz.app';
@@ -46,7 +47,7 @@ if (!existingConfig) {
     db.prepare(`
         INSERT INTO app_config (id, tenant_id, branch_id, device_name, currency_symbol, locale, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run('default', 'dev-tenant-id', 'main-branch', 'Console-Seeder', '₱', 'en-PH', now, now);
+    `).run('default', DEV_TENANT_ID, 'main-branch', 'Console-Seeder', '₱', 'en-PH', now, now);
 } else {
     console.log("App Config already exists.");
 }

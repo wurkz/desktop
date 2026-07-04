@@ -27,7 +27,7 @@
 
 | Phase | Backlog | Completed | Progress |
 |---|---|---|---|
-| Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~8% (1 of 12 done — BACK-0-001 ✅) |
+| Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~17% (2 of 12 done — BACK-0-001, 002 ✅) |
 | Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~70% (5 items remaining) |
 | Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~15% (11 items remaining) |
 | Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | 0% (8 items remaining) |
@@ -46,8 +46,8 @@ starting the next. Items marked *(mod)* have changed scope vs their original bac
 
 ### Tier P0 — Foundation (must precede all feature work)
 1. ~~**BACK-0-001** — Fix the production build~~ ✅ **Done** (2026-07-04 — installer builds clean)
-2. **BACK-0-002** — Consolidated v1 schema migration *(money→centavos, customers, status enum, app_config fields, timestamps — do while DB empty)*
-3. **BACK-0-003** — First-run setup wizard *(a fresh install currently can't even log in)*
+2. ~~**BACK-0-002** — Consolidated v1 schema migration~~ ✅ **Done** (2026-07-04 — money→centavos, customers, status enum, app_config fields, ms timestamps; verified on fresh DB boot)
+3. **BACK-0-003** — First-run setup wizard *(← NEXT; a fresh install currently can't even log in)*
 4. **BACK-0-004** — Username + PIN authentication
 5. **BACK-0-005** — Local HTTP API + LAN serving *(largest item; foundation for all mobile views)*
 6. **BACK-0-006** — Signed license + device fingerprint activation *(heavy; owner chose v1 over fast-follow — see D17 timeline note)*
@@ -113,8 +113,8 @@ BACK-{phase}-S{sequence}      → scaffolded / partial (not complete)
 Follow the **Critical Path to v1** above, top-down. The immediate next actions:
 
 1. ~~`BACK-0-001` — Fix the production build~~ ✅ **Done** (2026-07-04)
-2. `BACK-0-002` — Consolidated v1 schema migration *(← NEXT; while the DB is still empty)*
-3. `BACK-0-003` — First-run setup wizard *(fresh installs can't log in without it)*
+2. ~~`BACK-0-002` — Consolidated v1 schema migration~~ ✅ **Done** (2026-07-04)
+3. `BACK-0-003` — First-run setup wizard *(← NEXT; fresh installs can't log in without it)*
 4. `BACK-0-004` — Username + PIN authentication
 5. `BACK-0-005` — Local HTTP API + LAN serving *(start early — largest item)*
 

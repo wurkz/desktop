@@ -1,5 +1,6 @@
 import { Kysely } from 'kysely';
 import type { Database } from '@zorviz/db';
+import { DEV_TENANT_ID } from '@zorviz/core';
 import { AssetWithHistory, CreateAssetInput } from '../types';
 
 export class AssetRepository {
@@ -52,7 +53,7 @@ export class AssetRepository {
 
         await this.db.insertInto('assets').values({
             id,
-            tenant_id: input.tenantId || 'default-tenant',
+            tenant_id: input.tenantId || DEV_TENANT_ID,
             owner_id: input.ownerId || null,
             type: input.type,
             specs: JSON.stringify(input.specs),

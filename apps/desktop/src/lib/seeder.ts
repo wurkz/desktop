@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { DEV_TENANT_ID } from "@zorviz/core";
 
 // Simple hash function using Web Crypto API (browser-compatible)
 async function hashPassword(password: string): Promise<string> {
@@ -27,7 +28,7 @@ export const seedDevData = async () => {
         console.log("Seeding App Config...");
         await db.insertInto('app_config').values({
             id: "default",
-            tenant_id: "dev-tenant-id",
+            tenant_id: DEV_TENANT_ID,
             branch_id: "main-branch",
             device_name: "Dev PC",
             currency_symbol: "₱", // Philippine Peso for dev

@@ -1,6 +1,6 @@
 # Phase 0 Backlog — v1 Ship Blockers & Foundation
 
-> **Status:** In progress — 1 of 12 complete (BACK-0-001 ✅)
+> **Status:** In progress — 2 of 12 complete (BACK-0-001 ✅, BACK-0-002 ✅)
 > **Scope:** Foundation fixes and new cross-cutting infrastructure required before Zorviz can ship a
 > usable v1 to a real shop. Derived from the plan/design audit (2026-07-04) and owner decisions in
 > [`v1-decisions.md`](./v1-decisions.md).
@@ -8,35 +8,6 @@
 
 Every item traces to one or more decisions (D1–D19) in `v1-decisions.md`. Work top-down: **P0 → P1 → P2.**
 See the **Critical Path to v1** in [`README.md`](./README.md) for the full cross-phase ordering.
-
----
-
-## BACK-0-002 · Consolidated v1 Schema Migration
-
-**Priority:** 🔴 P0 — do while all business tables are empty (verified 0 rows)
-**Area:** `packages/db/migrations/sqlite/`, `packages/db/src/types.ts`
-**Traces to:** D3, D12, D13, D14, D19 (+ order/intake fields, tenant fix, timestamp units)
-**Description:**
-One consolidated migration to get the schema right before real data exists. Bundles all structural
-changes so we migrate once, not six times.
-
-**Acceptance Criteria:**
-- [ ] **Money → integers:** convert all money columns to INTEGER minor units (centavos) — `orders`
-      (subtotal, tax, discount, total), `order_items` (unit_price, total), `inventory` (unit_cost,
-      unit_price). Update types + all read/write sites to format on display only. *(D12)*
-- [ ] **Customers table:** new `customers` (id, tenant_id, name, phone, email nullable, address nullable,
-      created_at, updated_at). `assets.owner_id` and orders reference customers, not `users`. *(D3)*
-- [ ] **Order/intake fields:** `orders` gains `customer_complaint` (text), `assigned_mechanic_id`
-      (nullable), `receipt_number` (nullable, set at billing), `customer_id`. *(supports D5, D10, D19)*
-- [ ] **Status enum:** `orders.status` standardized to `triage | estimate | approved | in_progress |
-      done | paid` (+ optional `cancelled`). Update `OrdersTable` union + all UI badges. *(D19)*
-- [ ] **app_config additions:** `address`, `contact_phone`, `contact_email`, `logo_path`,
-      `tax_registration_id`, `tax_rate` (nullable — no baked default), `custom_fields` (JSON text). *(D13, D14)*
-- [ ] **Timestamps:** standardize on milliseconds everywhere; fix SQL defaults that use `unixepoch()`
-      (seconds) to match `Date.now()` (ms). Reconcile existing seed rows.
-- [ ] **tenant_id:** single source of truth from `app_config`; remove hardcoded `'default-tenant'` /
-      `'dev-tenant-id'` mismatch in asset repo and seed.
-- [ ] `tsc --noEmit` passes; app boots and applies the migration cleanly on a fresh DB.
 
 ---
 
