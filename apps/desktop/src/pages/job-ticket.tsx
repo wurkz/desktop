@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, CardHeader, CardTitle, CardContent } from "@zorviz/ui";
-import { ArrowLeft, CheckCircle2, AlertTriangle, MinusCircle } from "lucide-react";
+import { Button, Card, CardHeader, CardTitle, CardContent } from "@zorviz/ui";
+import { ArrowLeft, CheckCircle2, AlertTriangle, MinusCircle, FileText } from "lucide-react";
+import { formatMoney } from "@zorviz/core";
 import { getOrder, type JobTicket, type InspectionItem } from "../lib/orders-api";
 import { StatusBadge } from "../components/status-badge";
+import { EstimateBuilder } from "../features/repair/components/EstimateBuilder";
+import { useAppConfigStore } from "../stores/app-config";
 
 function assetTitle(asset?: JobTicket["asset"]): string {
     if (!asset) return "Unknown asset";
@@ -20,8 +23,10 @@ const INSPECTION_ICON: Record<InspectionItem["status"], typeof CheckCircle2> = {
 export default function JobTicketPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const currency = useAppConfigStore((s) => s.config?.currency_symbol ?? "");
     const [ticket, setTicket] = useState<JobTicket | null>(null);
     const [error, setError] = useState("");
+    const [estimateOpen, setEstimateOpen] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -95,6 +100,62 @@ export default function JobTicketPage() {
                                 </CardContent>
                             </Card>
                         )}
+
+                        <Card>
+                            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                                <CardTitle className="text-sm">Estimate</CardTitle>
+                                {(ticket.status === "triage" || ticket.status === "estimate") && (
+                                    <Button size="sm" variant="outline" onClick={() => setEstimateOpen(true)}>
+                                        <FileText className="h-4 w-4 mr-1" />
+                                        {ticket.items && ticket.items.length > 0 ? "Edit" : "Create"}
+                                    </Button>
+                                )}
+                            </CardHeader>
+                            <CardContent className="text-sm space-y-2">
+                                {ticket.items && ticket.items.length > 0 ? (
+                                    <>
+                                        {ticket.items.map((it) => (
+                                            <div key={it.id} className="flex justify-between gap-2">
+                                                <span>
+                                                    {it.description}{" "}
+                                                    <span className="text-muted-foreground">×{it.quantity}</span>
+                                                </span>
+                                                <span>{formatMoney(it.total, currency)}</span>
+                                            </div>
+                                        ))}
+                                        <div className="border-t pt-2 space-y-1">
+                                            <div className="flex justify-between text-muted-foreground">
+                                                <span>Subtotal</span>
+                                                <span>{formatMoney(ticket.subtotal, currency)}</span>
+                                            </div>
+                                            {ticket.discount > 0 && (
+                                                <div className="flex justify-between text-muted-foreground">
+                                                    <span>Discount</span>
+                                                    <span>-{formatMoney(ticket.discount, currency)}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between text-muted-foreground">
+                                                <span>Tax</span>
+                                                <span>{formatMoney(ticket.tax, currency)}</span>
+                                            </div>
+                                            <div className="flex justify-between font-semibold">
+                                                <span>Total</span>
+                                                <span>{formatMoney(ticket.total, currency)}</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <span className="text-muted-foreground">No estimate yet.</span>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <EstimateBuilder
+                            ticket={ticket}
+                            open={estimateOpen}
+                            onOpenChange={setEstimateOpen}
+                            onSaved={setTicket}
+                        />
                     </>
                 )}
             </main>

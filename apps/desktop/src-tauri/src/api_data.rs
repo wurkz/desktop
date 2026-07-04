@@ -31,6 +31,18 @@ async fn tenant_id(state: &ApiState) -> String {
         .unwrap_or_else(|| "dev-tenant".to_string())
 }
 
+// Tax rate (fraction, e.g. 0.12) from app_config; 0.0 if unset (region-agnostic, D13).
+async fn tax_rate(state: &ApiState) -> f64 {
+    sqlx::query("SELECT tax_rate FROM app_config WHERE id = 'default' LIMIT 1")
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|r| r.try_get::<Option<f64>, _>("tax_rate").ok())
+        .flatten()
+        .unwrap_or(0.0)
+}
+
 // Generic row -> JSON object (INTEGER -> number, REAL -> number, TEXT -> string, NULL -> null).
 fn row_to_json(row: &SqliteRow) -> Map<String, Value> {
     let mut map = Map::new();
@@ -334,5 +346,164 @@ async fn order_detail(state: &ApiState, id: &str) -> Option<Value> {
         }
     }
 
+    // Line items (estimate rows).
+    let items = sqlx::query("SELECT * FROM order_items WHERE order_id = ?")
+        .bind(id)
+        .fetch_all(&state.pool)
+        .await
+        .map(|rows| rows.iter().map(|r| Value::Object(row_to_json(r))).collect::<Vec<_>>())
+        .unwrap_or_default();
+    obj.insert("items".to_string(), Value::Array(items));
+
     Some(Value::Object(obj))
+}
+
+// ---- Inventory (minimal, for the estimate parts picker) ----
+
+pub async fn search_inventory(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<Value>>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let q = params.get("q").cloned().unwrap_or_default();
+    if q.trim().is_empty() {
+        return Ok(Json(vec![]));
+    }
+    let like = format!("%{}%", q);
+    let rows = sqlx::query("SELECT * FROM inventory WHERE sku LIKE ? OR name LIKE ? LIMIT 10")
+        .bind(&like)
+        .bind(&like)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(rows.iter().map(|r| Value::Object(row_to_json(r))).collect()))
+}
+
+#[derive(Deserialize)]
+pub struct CreateInventoryReq {
+    name: String,
+    sku: Option<String>,
+    unit_price: Option<i64>,
+    unit_cost: Option<i64>,
+}
+
+pub async fn create_inventory(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Json(req): Json<CreateInventoryReq>,
+) -> Result<Json<Value>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let id = uuid::Uuid::new_v4().to_string();
+    // Auto-generate a SKU from the name if none given.
+    let sku = req.sku.unwrap_or_else(|| {
+        let slug: String = req
+            .name
+            .to_lowercase()
+            .chars()
+            .map(|c| if c.is_alphanumeric() { c } else { '-' })
+            .collect();
+        format!("{}-{}", slug.trim_matches('-'), &id[..4])
+    });
+    sqlx::query(
+        "INSERT INTO inventory (id, sku, name, description, stock_on_hand, reorder_point, unit_cost, unit_price) \
+         VALUES (?, ?, ?, NULL, 0, 5, ?, ?)",
+    )
+    .bind(&id)
+    .bind(&sku)
+    .bind(req.name.trim())
+    .bind(req.unit_cost.unwrap_or(0))
+    .bind(req.unit_price.unwrap_or(0))
+    .execute(&state.pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let row = sqlx::query("SELECT * FROM inventory WHERE id = ? LIMIT 1")
+        .bind(&id)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(Value::Object(row_to_json(&row))))
+}
+
+// ---- Estimate ----
+
+#[derive(Deserialize)]
+pub struct EstimateItem {
+    #[serde(rename = "type")]
+    kind: String,
+    description: String,
+    quantity: f64,
+    unit_price: i64, // centavos
+    inventory_item_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct SaveEstimateReq {
+    items: Vec<EstimateItem>,
+    discount: i64, // centavos
+}
+
+/// PUT /api/orders/:id/estimate — replace line items, recompute totals (tax from app_config),
+/// set status to `estimate`. Server is authoritative on the math. Auth required.
+pub async fn save_estimate(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<SaveEstimateReq>,
+) -> Result<Json<Value>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    sqlx::query("DELETE FROM order_items WHERE order_id = ?")
+        .bind(&id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut subtotal: i64 = 0;
+    for item in &req.items {
+        let total = (item.quantity * item.unit_price as f64).round() as i64;
+        subtotal += total;
+        sqlx::query(
+            "INSERT INTO order_items (id, order_id, type, description, quantity, unit_price, total, inventory_item_id) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(&id)
+        .bind(&item.kind)
+        .bind(&item.description)
+        .bind(item.quantity)
+        .bind(item.unit_price)
+        .bind(total)
+        .bind(&item.inventory_item_id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+
+    let rate = tax_rate(&state).await;
+    let tax = (subtotal as f64 * rate).round() as i64;
+    let total = subtotal + tax - req.discount;
+    let now = now_ms();
+
+    sqlx::query(
+        "UPDATE orders SET subtotal = ?, tax = ?, discount = ?, total = ?, status = 'estimate', updated_at = ? WHERE id = ?",
+    )
+    .bind(subtotal)
+    .bind(tax)
+    .bind(req.discount)
+    .bind(total)
+    .bind(now)
+    .bind(&id)
+    .execute(&state.pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
 }

@@ -126,3 +126,36 @@ console errors.
 - `apps/desktop/src/App.tsx`, `apps/desktop/src/features/repair/components/AssetDiscovery.tsx`
 
 ---
+
+## ✅ BACK-2-C005 · Job Ticket — Estimation (Advisor)
+
+**Completed:** 2026-07-04
+**Original Backlog ID:** BACK-2-005 (also delivers basic inventory search/create — partial BACK-3-001/002 — and part linking column — partial BACK-3-006)
+
+**What was implemented:**
+- **Migration 0002** — `order_items.inventory_item_id TEXT` (nullable) to link a part line to inventory.
+- Rust `PUT /api/orders/:id/estimate` — replaces line items, recomputes **subtotal/tax/total server-side**
+  (tax rate from `app_config`, all integer centavos), sets status `estimate`. `GET /api/orders/:id` now
+  returns `items`. Minimal inventory endpoints: `GET /api/inventory?q=` and `POST /api/inventory`
+  (auto-generates a SKU from the name).
+- **EstimateBuilder** dialog: add Service rows and add Part via the `EntityPicker` (search inventory or
+  **inline-create** a part, D6/D7); per-line + subtotal/tax/discount/**total update live**; money entered in
+  major units, stored/computed in centavos via `@zorviz/core` helpers (`toCentavos`/`fromCentavos`/`formatMoney`).
+- Job ticket detail shows the estimate (line items + totals) and a Create/Edit Estimate button (shown while
+  status is triage/estimate). Added `api.put`.
+
+**Verification:** cargo check + vite build clean; curl — created a part, saved an estimate (service ₱500×1 +
+part ₱450×2) → **subtotal 140000, tax 16800 @12%, total 156800, status estimate** (exact centavo math);
+Playwright UI flow (new ticket → Create estimate → add service → Save → ticket shows Estimate + line + total),
+zero console errors.
+
+**⚠️ Remaining (tracked in Phase 3):** full inventory management page (BACK-3-003/004) and **stock deduction
+on approval** (BACK-3-006 — the link column exists but stock isn't decremented yet). Data access via HTTP API (D23).
+
+**Key files:**
+- `packages/db/migrations/sqlite/0002_order_item_inventory.sql` (new), `packages/db/src/types.ts`
+- `apps/desktop/src-tauri/src/api_data.rs`, `apps/desktop/src-tauri/src/server.rs`
+- `apps/desktop/src/lib/inventory-api.ts` (new), `apps/desktop/src/lib/orders-api.ts`, `apps/desktop/src/lib/api.ts`
+- `apps/desktop/src/features/repair/components/EstimateBuilder.tsx` (new), `apps/desktop/src/pages/job-ticket.tsx`
+
+---

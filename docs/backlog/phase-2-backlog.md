@@ -40,25 +40,6 @@ No update or delete operations exist in `AssetRepository`. Required for correcti
 
 ---
 
-## BACK-2-005 · Job Ticket — Estimation (Advisor)
-
-**Priority:** 🔴 High  
-**Area:** `apps/desktop/src/features/repair/`  
-**Description:**  
-From a Triage ticket, the Service Advisor builds an estimate by adding service line items and parts.
-
-**Acceptance Criteria:**
-- [ ] "Create Estimate" button on a TRIAGE ticket
-- [ ] Line item builder:
-  - Add Service row: description, quantity, unit price, total (auto-calculated)
-  - Add Part row: select from Inventory (search by SKU/name), quantity, unit price, total
-  - Support multiple rows
-- [ ] Subtotal, Tax (configurable %), Discount, Grand Total calculated and displayed live
-- [ ] "Save Estimate" writes all rows to `order_items` table and updates `orders.status = 'estimate'`
-- [ ] `OrderRepository.addItems(orderId, items[])` method added
-
----
-
 ## BACK-2-006 · Job Ticket — Customer Approval
 
 **Priority:** 🟡 Medium  

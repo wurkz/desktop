@@ -163,6 +163,7 @@ export interface OrderItemsTable {
     quantity: number;
     unit_price: number; // centavos
     total: number; // centavos
+    inventory_item_id: Nullable<string>; // set when a part is picked from inventory
 }
 
 export type OrderItem = Selectable<OrderItemsTable>;

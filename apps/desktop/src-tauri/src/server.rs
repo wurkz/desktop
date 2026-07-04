@@ -108,6 +108,11 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
         )
         .route("/api/orders", post(api_data::create_order))
         .route("/api/orders/:id", get(api_data::get_order))
+        .route("/api/orders/:id/estimate", axum::routing::put(api_data::save_estimate))
+        .route(
+            "/api/inventory",
+            get(api_data::search_inventory).post(api_data::create_inventory),
+        )
         .fallback(static_handler) // serve the SPA for everything else
         .layer(cors_layer())
         .with_state(api_state);

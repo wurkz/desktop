@@ -29,8 +29,8 @@
 |---|---|---|---|
 | Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~50% (6 of 13 ✅ + BACK-0-005 LAN, phone-verified) |
 | Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~70% (5 items remaining) |
-| Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~35% (Asset Create + Job Ticket intake done; estimate next) |
-| Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | 0% (8 items remaining) |
+| Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~45% (Asset Create, Intake, Estimate done; approval next) |
+| Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | ~15% (inventory search/create + part-link done via estimate; mgmt page + stock deduction remain) |
 | Phase 4 — Cloud Link | [backlog](./phase-4-backlog.md) | [completed](./phase-4-completed.md) | ~10% (8 items remaining) |
 
 > **Phase numbering ≠ work order.** For shipping v1, follow the **Critical Path** below, which
@@ -59,10 +59,10 @@ starting the next. Items marked *(mod)* have changed scope vs their original bac
 10. **BACK-2-002** — Asset detail / service history
 11. ~~**BACK-2-004** — Job ticket create (intake & triage)~~ ✅ **Done** (2026-07-04 — intake form + ticket detail, phone-ready)
 12. **BACK-2-011** — Photo capture on intake *(mod: kept in v1, natural via phone camera over LAN — D4)*
-13. **BACK-2-005** — Estimate builder *(← NEXT; parts via inventory picker with inline create — D6/D7)*
-14. **BACK-3-001..004** — Basic inventory (scaffold, CRUD, list page, create/edit) *(needed for estimate part-picking — D6)*
-15. **BACK-3-006** — Parts linking + stock deduction on approval
-16. **BACK-2-006** — Customer approval *(mod: simple approval record — who + how — NOT signature/OTP — D5)*
+13. ~~**BACK-2-005** — Estimate builder~~ ✅ **Done** (2026-07-04 — live centavo totals, parts via inline-create picker)
+14. **BACK-3-001..004** — Basic inventory *(search/create done via estimate; full mgmt page remaining)*
+15. **BACK-3-006** — Parts linking + stock deduction on approval *(link column done; deduction pending)*
+16. **BACK-2-006** — Customer approval *(← NEXT; simple approval record — who + how — NOT signature/OTP — D5)*
 17. **BACK-2-008** — Mechanic assignment
 18. **BACK-2-007** — Mechanic "My Jobs" mobile view *(the CRITICAL mobile execution screen)*
 19. **BACK-2-009** — Completion & invoice *(mod: PDF export, not direct print — D9)*
