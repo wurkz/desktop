@@ -183,3 +183,39 @@ auth for now; LAN session binding lands with the HTTP API + LAN serving item.
 - `packages/db/migrations/sqlite/0000_init.sql`, `packages/db/src/types.ts`, `packages/db/src/seed.ts`
 
 ---
+
+## ✅ BACK-0-C009 · Inline-Create Picker Pattern
+
+**Completed:** 2026-07-04
+**Original Backlog ID:** BACK-0-009
+**Traces to:** D7
+
+**What was implemented:**
+- Reusable generic `EntityPicker<T>` (`apps/desktop/src/components/entity-picker.tsx`): debounced search
+  against a table-backed source, a results dropdown, and an inline **"Create '<query>'"** row shown when no
+  exact match — so staff never dead-end. Selecting shows a chip with a clear button.
+- First adopter: the customer picker inside the asset-create form. Same component will back the parts/asset
+  pickers as those forms are built.
+
+**Key files:**
+- `apps/desktop/src/components/entity-picker.tsx`
+
+---
+
+## ✅ BACK-0-C010 · Customer Module (endpoints + inline create)
+
+**Completed:** 2026-07-04
+**Original Backlog ID:** BACK-0-010
+**Traces to:** D3, D7
+
+**What was implemented:**
+- Rust endpoints in `api_data.rs`: `GET /api/customers?q=` (search by name/phone) and `POST /api/customers`
+  (create), both auth-guarded; `tenant_id` from `app_config` via a shared `tenant_id()` helper.
+- Frontend client `customers-api.ts` (`searchCustomers`, `createCustomer`), wired into `EntityPicker`.
+- Verified via curl: create returns the customer (nulls correct, tenant set), search finds it, 401 without auth.
+
+**Key files:**
+- `apps/desktop/src-tauri/src/api_data.rs`, `apps/desktop/src-tauri/src/server.rs`
+- `apps/desktop/src/lib/customers-api.ts`
+
+---

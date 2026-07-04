@@ -27,9 +27,9 @@
 
 | Phase | Backlog | Completed | Progress |
 |---|---|---|---|
-| Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~31% (4 of 13 done — BACK-0-001–004 ✅) |
+| Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~50% (6 of 13 ✅ + BACK-0-005 LAN, phone-verified) |
 | Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~70% (5 items remaining) |
-| Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~15% (11 items remaining) |
+| Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~25% (Asset Create done; job tickets next) |
 | Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | 0% (8 items remaining) |
 | Phase 4 — Cloud Link | [backlog](./phase-4-backlog.md) | [completed](./phase-4-completed.md) | ~10% (8 items remaining) |
 
@@ -53,11 +53,11 @@ starting the next. Items marked *(mod)* have changed scope vs their original bac
 6. **BACK-0-006** — Signed license + device fingerprint activation *(heavy; owner chose v1 over fast-follow — see D17 timeline note)*
 
 ### Tier P1 — The core money-making loop + safety
-7. **BACK-0-009** — Inline-create picker pattern *(cross-cutting; build before the forms that use it)*
-8. **BACK-0-010** — Customer module (repository + inline create)
-9. **BACK-2-001** — Asset create form *(wire the existing `+` button; use the picker)*
+7. ~~**BACK-0-009** — Inline-create picker pattern~~ ✅ **Done** (2026-07-04 — reusable `EntityPicker`)
+8. ~~**BACK-0-010** — Customer module (endpoints + inline create)~~ ✅ **Done** (2026-07-04)
+9. ~~**BACK-2-001** — Asset create form~~ ✅ **Done** (2026-07-04 — `+` opens New Asset dialog w/ owner picker)
 10. **BACK-2-002** — Asset detail / service history
-11. **BACK-2-004** — Job ticket create (intake & triage)
+11. **BACK-2-004** — Job ticket create (intake & triage) *(← NEXT)*
 12. **BACK-2-011** — Photo capture on intake *(mod: kept in v1, natural via phone camera over LAN — D4)*
 13. **BACK-2-005** — Estimate builder *(mod: parts via inventory picker with inline create — D6/D7)*
 14. **BACK-3-001..004** — Basic inventory (scaffold, CRUD, list page, create/edit) *(needed for estimate part-picking — D6)*

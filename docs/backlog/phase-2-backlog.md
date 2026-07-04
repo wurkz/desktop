@@ -1,28 +1,8 @@
 # Phase 2 Backlog — Repair Module
 
-> **Status:** ~15% Complete  
+> **Status:** ~25% Complete (Asset Create done via single-path API)  
 > **Scope:** Asset Management, Job Orders, Service History, Mechanic Views, Billing  
 > **Completed items live in:** [`phase-2-completed.md`](./phase-2-completed.md)
-
----
-
-## BACK-2-001 · Asset Create Form / Dialog
-
-**Priority:** 🔴 High  
-**Area:** `apps/desktop/src/features/repair/components/`  
-**Description:**  
-The `+` button in `AssetDiscovery.tsx` exists but is not wired. When no asset is found after a search, the user should be able to tap `+` to open a creation form.
-
-**Acceptance Criteria:**
-- [ ] Clicking `+` opens a Sheet/Dialog component
-- [ ] Form fields: Asset Type (vehicle / gadget / appliance), and dynamic spec fields based on type
-  - Vehicle: Plate Number, VIN, Make, Model, Year, Color, Mileage
-  - Gadget: Brand, Model, Serial Number, IMEI, Color
-  - Appliance: Brand, Model, Serial Number
-- [ ] Optional: Owner Name (creates a draft customer)
-- [ ] On submit, calls `repairModule.assets.create(input)`
-- [ ] On success, result appears immediately in the search list
-- [ ] Form validates required fields before submission
 
 ---
 

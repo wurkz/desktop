@@ -102,6 +102,10 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
             "/api/assets",
             get(api_data::search_assets).post(api_data::create_asset),
         )
+        .route(
+            "/api/customers",
+            get(api_data::search_customers).post(api_data::create_customer),
+        )
         .fallback(static_handler) // serve the SPA for everything else
         .layer(cors_layer())
         .with_state(api_state);

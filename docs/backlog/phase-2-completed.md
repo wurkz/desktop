@@ -62,3 +62,32 @@
 - `packages/features/repair/src/types.ts` — `CreateAssetInput`, `JobTicketInput`
 
 ---
+
+## ✅ BACK-2-C003 · Asset Create Form / Dialog
+
+**Completed:** 2026-07-04
+**Original Backlog ID:** BACK-2-001
+
+**What was implemented:**
+- The `+` button in `AssetDiscovery` now opens a **New Asset** dialog (`AssetCreateForm.tsx`).
+- Asset type selector (vehicle / gadget / appliance) with **dynamic spec fields** per type (vehicle: plate,
+  VIN, make, model, year, color, mileage; gadget: brand, model, serial, IMEI, color; appliance: brand,
+  model, serial).
+- Optional **Owner** via the reusable `EntityPicker` (BACK-0-C009) with inline customer create (BACK-0-C010).
+- Submits to `POST /api/assets` (single-path; not the old Kysely repo) with `owner_id`; validates at least
+  one detail is filled; on success the new asset is prepended to the results list.
+- Added a shadcn-style **Dialog** to `@zorviz/ui` (Radix) since none existed.
+
+**Verification:** frontend build clean; Playwright browser flow (login → Repair Shop → open New Asset dialog
+→ customer picker visible) passed with zero console errors; owner picker create verified against live API.
+
+**⚠️ Deviation from original spec:** submits via the HTTP API (`createAsset`) rather than
+`repairModule.assets.create` — per the single-path architecture (D23).
+
+**Key files:**
+- `apps/desktop/src/features/repair/components/AssetCreateForm.tsx` (new)
+- `apps/desktop/src/features/repair/components/AssetDiscovery.tsx`, `apps/desktop/src/components/entity-picker.tsx` (new)
+- `apps/desktop/src/lib/repair-api.ts`, `apps/desktop/src/lib/customers-api.ts` (new)
+- `packages/ui/src/components/ui/dialog.tsx` (new)
+
+---

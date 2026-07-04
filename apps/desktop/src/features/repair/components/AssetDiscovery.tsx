@@ -4,11 +4,13 @@ import { searchAssets } from "../../../lib/repair-api";
 import { AssetWithHistory } from "@zorviz/feature-repair";
 import { Input, Button, Card, CardHeader, CardContent } from "@zorviz/ui";
 import { Search, Plus, Car, Smartphone, Watch } from "lucide-react";
+import { AssetCreateForm } from "./AssetCreateForm";
 
 export function AssetDiscovery() {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<AssetWithHistory[]>([]);
     const [loading, setLoading] = useState(false);
+    const [createOpen, setCreateOpen] = useState(false);
 
     // Debounced search (simplified)
     useEffect(() => {
@@ -52,7 +54,7 @@ export function AssetDiscovery() {
                         className="text-lg h-12"
                         autoFocus
                     />
-                    <Button size="icon" className="h-12 w-12 shrink-0">
+                    <Button size="icon" className="h-12 w-12 shrink-0" onClick={() => setCreateOpen(true)}>
                         <Plus className="h-6 w-6" />
                     </Button>
                 </div>
@@ -91,6 +93,12 @@ export function AssetDiscovery() {
                     </div>
                 )}
             </div>
+
+            <AssetCreateForm
+                open={createOpen}
+                onOpenChange={setCreateOpen}
+                onCreated={(asset) => setResults((prev) => [asset, ...prev.filter((a) => a.id !== asset.id)])}
+            />
         </div>
     );
 }

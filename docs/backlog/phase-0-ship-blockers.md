@@ -1,6 +1,6 @@
 # Phase 0 Backlog — v1 Ship Blockers & Foundation
 
-> **Status:** In progress — 4 of 13 complete (BACK-0-001, 002, 003, 004 ✅)
+> **Status:** In progress — 6 of 13 complete (BACK-0-001, 002, 003, 004, 009, 010 ✅) + BACK-0-005 increments 1–3 (LAN, phone-verified)
 > **Scope:** Foundation fixes and new cross-cutting infrastructure required before Zorviz can ship a
 > usable v1 to a real shop. Derived from the plan/design audit (2026-07-04) and owner decisions in
 > [`v1-decisions.md`](./v1-decisions.md).
@@ -126,39 +126,6 @@ A disk failure or stolen PC otherwise loses all shop data. Local backup with aut
 - [ ] Backup target folder is shop-configurable (USB/second disk/network folder)
 - [ ] "Restore from backup" flow (with confirmation — it overwrites current data)
 - [ ] Rolling retention (keep last N backups; don't fill the disk)
-
----
-
-## BACK-0-009 · Inline-Create Picker Pattern (Cross-Cutting)
-
-**Priority:** 🟡 P1 — reused by intake, estimation, booking, inventory
-**Area:** `packages/ui/` (shared picker component)
-**Traces to:** D7
-**Description:**
-Global UX rule: any search box reading from a table must offer an inline "create new" option when no
-match is found, so staff never dead-end mid-workflow. Build once as a reusable component.
-
-**Acceptance Criteria:**
-- [ ] Reusable `<EntityPicker>` (or similar): debounced search, results list, "＋ Create '<query>'" row
-      when no exact match
-- [ ] On create, opens the entity's create form inline (sheet/dialog), returns the new record to the caller
-- [ ] Adopted by: customer picker, inventory part picker, asset search — and documented as the standard
-      for all future table-backed pickers
-
----
-
-## BACK-0-010 · Customer Module (Repository + Inline Create)
-
-**Priority:** 🟡 P1 — job tickets and invoices need a customer
-**Area:** `packages/features/repair/` (or new `packages/features/crm/`)
-**Traces to:** D3, D7
-**Description:**
-Data access + inline-create for the new `customers` table (BACK-0-002).
-
-**Acceptance Criteria:**
-- [ ] `CustomerRepository`: `search(query)`, `getById(id)`, `create(input)`, `update(id, input)`
-- [ ] Wired into the `<EntityPicker>` for use in intake/estimate/booking
-- [ ] Create form: name (required), phone, optional email/address
 
 ---
 
