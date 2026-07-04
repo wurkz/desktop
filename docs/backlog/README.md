@@ -27,7 +27,7 @@
 
 | Phase | Backlog | Completed | Progress |
 |---|---|---|---|
-| Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~82% (9 of 13 ✅; remaining: dashboard stats, logo upload, online-enforcement[deferred]) |
+| Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~90% (10 of 13 ✅; remaining: logo upload, online-enforcement[deferred]) |
 | Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~70% (5 items remaining) |
 | Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~80% (**full core loop intake→…→invoice→paid working**; remaining: asset detail/history, bookings, photos) |
 | Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | ~15% (inventory search/create + part-link done via estimate; mgmt page + stock deduction remain) |
@@ -71,9 +71,10 @@ starting the next. Items marked *(mod)* have changed scope vs their original bac
 22. ~~**BACK-0-008** — Backup & restore~~ ✅ **Done** (2026-07-04 — VACUUM INTO backups, auto+manual, staged restore, retention)
 
 ### Tier P2 — Ship polish
-23. **BACK-0-011** — Real dashboard stats *(replace hardcoded numbers)*
+23. ~~**BACK-0-011** — Real dashboard stats~~ ✅ **Done** (2026-07-04 — live /api/stats; no more fake numbers)
 24. **BACK-1-004** — App config settings page *(edit what the wizard set)*
 25. **BACK-2-003** — Asset update & soft-delete
+26. **BACK-0-013** — Shop logo upload *(needs Tauri fs; shows on invoices)*
 
 ### Deferred past v1 (explicitly cut — see v1-decisions.md)
 - **BACK-0-012** — Online enforcement layer / remote kill-switch *(fast-follow; needs the first backend — D20. Offline license BACK-0-006 ships in v1.)*

@@ -6,6 +6,28 @@
 
 ---
 
+## ✅ BACK-0-C011 · Real Dashboard Stats
+
+**Completed:** 2026-07-04
+**Original Backlog ID:** BACK-0-011
+
+**What was implemented:**
+- Rust `GET /api/stats` (auth, read-only): `active_jobs` (orders `in_progress`), `pending_estimates`
+  (`estimate`), `low_stock` (inventory `stock_on_hand <= reorder_point`), `month_revenue` (Σ `paid`
+  order totals since the start of the current month, in centavos).
+- Dashboard fetches `/api/stats` and renders the four cards live; revenue formatted via `formatMoney`
+  with the shop currency. Removed the hardcoded 12 / 5 / 3 / $24.5k placeholders.
+
+**Verification:** live counts changed correctly — +1 estimate → pending_estimates 2→3; +1 part →
+low_stock 1→2; billing an order → month_revenue 67200→179200 (exact centavos incl. 12% tax). Playwright:
+dashboard shows a formatted ₱ revenue and no longer shows "24.5k", zero console errors.
+
+**Key files:**
+- `apps/desktop/src-tauri/src/api_data.rs` (get_stats), `apps/desktop/src-tauri/src/server.rs`
+- `apps/desktop/src/pages/dashboard.tsx`
+
+---
+
 ## ✅ BACK-0-C007 · Minimal User Management
 
 **Completed:** 2026-07-04

@@ -3,18 +3,29 @@ import { useAuthStore } from "../stores/auth";
 import { useAppConfigStore } from "../stores/app-config";
 import { Button, ThemeSwitcher } from "@zorviz/ui";
 import { useNavigate } from "react-router-dom";
+import { formatMoney } from "@zorviz/core";
 import { ServerStatus } from "../components/server-status";
 import { Wrench, Package, Settings, ChevronRight, Car, ClipboardList, TrendingUp, DatabaseBackup, Users } from "lucide-react";
 import { BackupDialog } from "../features/backup/BackupDialog";
+import { api } from "../lib/api";
+
+interface DashboardStats {
+    active_jobs: number;
+    pending_estimates: number;
+    low_stock: number;
+    month_revenue: number;
+}
 
 export default function DashboardPage() {
     const { user, logout } = useAuthStore();
     const { config, fetchConfig } = useAppConfigStore();
     const navigate = useNavigate();
     const [backupOpen, setBackupOpen] = useState(false);
+    const [stats, setStats] = useState<DashboardStats | null>(null);
 
     useEffect(() => {
         fetchConfig();
+        api.get<DashboardStats>("/api/stats").then(setStats).catch(() => {});
     }, [fetchConfig]);
 
     const handleLogout = () => {
@@ -91,7 +102,7 @@ export default function DashboardPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Active Jobs</p>
-                                <p className="text-2xl font-bold">12</p>
+                                <p className="text-2xl font-bold">{stats?.active_jobs ?? 0}</p>
                             </div>
                         </div>
                     </div>
@@ -102,7 +113,7 @@ export default function DashboardPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Pending Estimates</p>
-                                <p className="text-2xl font-bold">5</p>
+                                <p className="text-2xl font-bold">{stats?.pending_estimates ?? 0}</p>
                             </div>
                         </div>
                     </div>
@@ -113,7 +124,7 @@ export default function DashboardPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Low Stock</p>
-                                <p className="text-2xl font-bold text-destructive">3</p>
+                                <p className="text-2xl font-bold text-destructive">{stats?.low_stock ?? 0}</p>
                             </div>
                         </div>
                     </div>
@@ -124,7 +135,7 @@ export default function DashboardPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">This Month</p>
-                                <p className="text-2xl font-bold">{config?.currency_symbol || '$'}24.5k</p>
+                                <p className="text-2xl font-bold">{formatMoney(stats?.month_revenue ?? 0, config?.currency_symbol ?? "")}</p>
                             </div>
                         </div>
                     </div>

@@ -100,6 +100,7 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
         .route("/api/logout", post(auth::logout))
         .route("/api/me", get(auth::me))
         .route("/api/config", get(api_data::get_config))
+        .route("/api/stats", get(api_data::get_stats))
         .route(
             "/api/assets",
             get(api_data::search_assets).post(api_data::create_asset),

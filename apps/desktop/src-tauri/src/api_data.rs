@@ -576,6 +576,49 @@ pub async fn load_license(
     Ok(Json(serde_json::to_value(crate::license::read_license_status(&dd)).unwrap_or(Value::Null)))
 }
 
+// ---- Dashboard stats ----
+
+/// GET /api/stats — live dashboard counts (auth required). Read-only.
+pub async fn get_stats(State(state): State<ApiState>, headers: HeaderMap) -> Result<Json<Value>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    use chrono::{Datelike, TimeZone};
+    let now = chrono::Utc::now();
+    let month_start = chrono::Utc
+        .with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0)
+        .single()
+        .map(|d| d.timestamp_millis())
+        .unwrap_or(0);
+
+    let scalar = |sql: &'static str, bind: Option<i64>| {
+        let pool = state.pool.clone();
+        async move {
+            let mut q = sqlx::query(sql);
+            if let Some(b) = bind {
+                q = q.bind(b);
+            }
+            q.fetch_one(&pool).await.ok().and_then(|r| r.try_get::<i64, _>(0).ok()).unwrap_or(0)
+        }
+    };
+
+    let active_jobs = scalar("SELECT COUNT(*) FROM orders WHERE status = 'in_progress'", None).await;
+    let pending_estimates = scalar("SELECT COUNT(*) FROM orders WHERE status = 'estimate'", None).await;
+    let low_stock = scalar("SELECT COUNT(*) FROM inventory WHERE stock_on_hand <= reorder_point", None).await;
+    let month_revenue = scalar(
+        "SELECT COALESCE(SUM(total), 0) FROM orders WHERE status = 'paid' AND updated_at >= ?",
+        Some(month_start),
+    )
+    .await;
+
+    Ok(Json(json!({
+        "active_jobs": active_jobs,
+        "pending_estimates": pending_estimates,
+        "low_stock": low_stock,
+        "month_revenue": month_revenue
+    })))
+}
+
 // ---- Backup & restore ----
 
 pub async fn backup_now(State(state): State<ApiState>, headers: HeaderMap) -> Result<Json<Value>, StatusCode> {
