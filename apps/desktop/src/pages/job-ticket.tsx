@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Card, CardHeader, CardTitle, CardContent } from "@zorviz/ui";
-import { ArrowLeft, CheckCircle2, AlertTriangle, MinusCircle, FileText } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle, MinusCircle, FileText, UserCog } from "lucide-react";
 import { formatMoney } from "@zorviz/core";
-import { getOrder, type JobTicket, type InspectionItem } from "../lib/orders-api";
+import { getOrder, completeItem, markDone, type JobTicket, type InspectionItem } from "../lib/orders-api";
 import { StatusBadge } from "../components/status-badge";
 import { EstimateBuilder } from "../features/repair/components/EstimateBuilder";
 import { ApprovalDialog } from "../features/repair/components/ApprovalDialog";
+import { AssignDialog } from "../features/repair/components/AssignDialog";
 import { useAppConfigStore } from "../stores/app-config";
 
 function assetTitle(asset?: JobTicket["asset"]): string {
@@ -29,6 +30,23 @@ export default function JobTicketPage() {
     const [error, setError] = useState("");
     const [estimateOpen, setEstimateOpen] = useState(false);
     const [approvalOpen, setApprovalOpen] = useState(false);
+    const [assignOpen, setAssignOpen] = useState(false);
+
+    const toggleItem = async (itemId: string, completed: boolean) => {
+        try {
+            setTicket(await completeItem(itemId, completed));
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    const finishJob = async () => {
+        if (!ticket) return;
+        try {
+            setTicket(await markDone(ticket.id));
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     useEffect(() => {
         if (!id) return;
@@ -65,6 +83,15 @@ export default function JobTicketPage() {
                                         {ticket.customer.phone ? ` · ${ticket.customer.phone}` : ""}
                                     </div>
                                 )}
+                                <div className="flex items-center justify-between pt-1">
+                                    <span className="flex items-center gap-1">
+                                        <UserCog className="w-4 h-4" />
+                                        {ticket.mechanic ? ticket.mechanic.name : "Unassigned"}
+                                    </span>
+                                    <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
+                                        Assign
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -163,6 +190,42 @@ export default function JobTicketPage() {
                             </CardContent>
                         </Card>
 
+                        {(ticket.status === "approved" || ticket.status === "in_progress") &&
+                            ticket.items &&
+                            ticket.items.length > 0 && (
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm">Work Checklist</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2">
+                                        {ticket.items.map((it) => (
+                                            <label
+                                                key={it.id}
+                                                className="flex items-center gap-3 py-1 cursor-pointer select-none"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-5 w-5 shrink-0"
+                                                    checked={it.completed === 1}
+                                                    onChange={(e) => toggleItem(it.id, e.target.checked)}
+                                                />
+                                                <span className={it.completed === 1 ? "line-through text-muted-foreground" : ""}>
+                                                    {it.description}
+                                                    <span className="text-muted-foreground"> ×{it.quantity}</span>
+                                                </span>
+                                            </label>
+                                        ))}
+                                        <Button
+                                            className="w-full mt-2"
+                                            disabled={!ticket.items.every((it) => it.completed === 1)}
+                                            onClick={finishJob}
+                                        >
+                                            Mark as Done
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            )}
+
                         <EstimateBuilder
                             ticket={ticket}
                             open={estimateOpen}
@@ -174,6 +237,12 @@ export default function JobTicketPage() {
                             open={approvalOpen}
                             onOpenChange={setApprovalOpen}
                             onApproved={setTicket}
+                        />
+                        <AssignDialog
+                            ticket={ticket}
+                            open={assignOpen}
+                            onOpenChange={setAssignOpen}
+                            onAssigned={setTicket}
                         />
                     </>
                 )}

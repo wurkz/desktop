@@ -16,6 +16,7 @@ export interface OrderItem {
     unit_price: number; // centavos
     total: number; // centavos
     inventory_item_id: string | null;
+    completed: number; // 1 = done
 }
 
 export interface JobTicket {
@@ -31,10 +32,21 @@ export interface JobTicket {
     total: number;
     created_at: number;
     updated_at: number;
+    assigned_mechanic_id: string | null;
     asset?: { id: string; type: string; specs: Record<string, unknown> };
     customer?: { id: string; name: string; phone: string | null } | null;
+    mechanic?: { id: string; name: string; role: string } | null;
     items?: OrderItem[];
     approval_proof?: { approved_by: string; method: string; at: number } | null;
+}
+
+export interface JobSummary {
+    id: string;
+    status: OrderStatus;
+    customer_complaint: string | null;
+    created_at: number;
+    assigned_mechanic_id: string | null;
+    asset?: { type: string; specs: Record<string, unknown> };
 }
 
 export interface EstimateItemInput {
@@ -57,6 +69,22 @@ export function approveOrder(
     input: { approved_by: string; method: string }
 ): Promise<JobTicket> {
     return api.post<JobTicket>(`/api/orders/${orderId}/approve`, input);
+}
+
+export function listJobs(assignedToMe = false): Promise<JobSummary[]> {
+    return api.get<JobSummary[]>(`/api/orders${assignedToMe ? "?assigned=me" : ""}`);
+}
+
+export function assignOrder(orderId: string, mechanicId: string | null): Promise<JobTicket> {
+    return api.post<JobTicket>(`/api/orders/${orderId}/assign`, { mechanic_id: mechanicId });
+}
+
+export function completeItem(itemId: string, completed: boolean): Promise<JobTicket> {
+    return api.put<JobTicket>(`/api/order_items/${itemId}/complete`, { completed });
+}
+
+export function markDone(orderId: string): Promise<JobTicket> {
+    return api.post<JobTicket>(`/api/orders/${orderId}/done`);
 }
 
 export function createOrder(input: {

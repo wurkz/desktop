@@ -376,6 +376,16 @@ async fn order_detail(state: &ApiState, id: &str) -> Option<Value> {
         }
     }
 
+    if let Some(mech_id) = obj.get("assigned_mechanic_id").and_then(|v| v.as_str()).map(String::from) {
+        if let Ok(Some(mrow)) = sqlx::query("SELECT id, name, username, role FROM users WHERE id = ? LIMIT 1")
+            .bind(&mech_id)
+            .fetch_optional(&state.pool)
+            .await
+        {
+            obj.insert("mechanic".to_string(), Value::Object(row_to_json(&mrow)));
+        }
+    }
+
     // Line items (estimate rows).
     let items = sqlx::query("SELECT * FROM order_items WHERE order_id = ?")
         .bind(id)
@@ -535,5 +545,158 @@ pub async fn save_estimate(
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+    order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
+}
+
+// ---- Users / mechanic assignment & execution ----
+
+/// GET /api/users?role=mechanic — list active users (never returns pin fields). Auth required.
+pub async fn list_users(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<Value>>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let rows = if let Some(role) = params.get("role") {
+        sqlx::query("SELECT id, name, username, role FROM users WHERE role = ? AND is_active = 1 ORDER BY name")
+            .bind(role)
+            .fetch_all(&state.pool)
+            .await
+    } else {
+        sqlx::query("SELECT id, name, username, role FROM users WHERE is_active = 1 ORDER BY name")
+            .fetch_all(&state.pool)
+            .await
+    }
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(rows.iter().map(|r| Value::Object(row_to_json(r))).collect()))
+}
+
+#[derive(Deserialize)]
+pub struct AssignReq {
+    mechanic_id: Option<String>,
+}
+
+/// POST /api/orders/:id/assign — assign (or clear) the mechanic. Auth required.
+pub async fn assign_order(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<AssignReq>,
+) -> Result<Json<Value>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    sqlx::query("UPDATE orders SET assigned_mechanic_id = ?, updated_at = ? WHERE id = ?")
+        .bind(&req.mechanic_id)
+        .bind(now_ms())
+        .bind(&id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
+}
+
+/// GET /api/orders?assigned=me — active job board (approved + in_progress). `assigned=me`
+/// filters to the current user's assignments. Each item includes a light nested asset. Auth required.
+pub async fn list_orders(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<Value>>, StatusCode> {
+    let session = session_from_headers(&state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+
+    let rows = if params.get("assigned").map(|s| s.as_str()) == Some("me") {
+        sqlx::query(
+            "SELECT * FROM orders WHERE status IN ('approved','in_progress') AND assigned_mechanic_id = ? ORDER BY created_at DESC",
+        )
+        .bind(&session.user_id)
+        .fetch_all(&state.pool)
+        .await
+    } else {
+        sqlx::query("SELECT * FROM orders WHERE status IN ('approved','in_progress') ORDER BY created_at DESC")
+            .fetch_all(&state.pool)
+            .await
+    }
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut out = Vec::new();
+    for r in &rows {
+        let mut obj = row_to_json(r);
+        if let Some(asset_id) = obj.get("asset_id").and_then(|v| v.as_str()).map(String::from) {
+            if let Ok(Some(arow)) = sqlx::query("SELECT * FROM assets WHERE id = ? LIMIT 1")
+                .bind(&asset_id)
+                .fetch_optional(&state.pool)
+                .await
+            {
+                let mut a = row_to_json(&arow);
+                parse_json_field(&mut a, "specs");
+                obj.insert("asset".to_string(), Value::Object(a));
+            }
+        }
+        out.push(Value::Object(obj));
+    }
+    Ok(Json(out))
+}
+
+#[derive(Deserialize)]
+pub struct CompleteItemReq {
+    completed: bool,
+}
+
+/// PUT /api/order_items/:id/complete — check/uncheck a line item; bumps the order
+/// approved -> in_progress on first check. Returns the updated ticket. Auth required.
+pub async fn complete_item(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(item_id): Path<String>,
+    Json(req): Json<CompleteItemReq>,
+) -> Result<Json<Value>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let order_id: String = sqlx::query("SELECT order_id FROM order_items WHERE id = ? LIMIT 1")
+        .bind(&item_id)
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|r| r.try_get::<String, _>("order_id").ok())
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    sqlx::query("UPDATE order_items SET completed = ? WHERE id = ?")
+        .bind(if req.completed { 1 } else { 0 })
+        .bind(&item_id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Starting work moves an approved ticket into progress.
+    sqlx::query("UPDATE orders SET status = 'in_progress', updated_at = ? WHERE id = ? AND status = 'approved'")
+        .bind(now_ms())
+        .bind(&order_id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    order_detail(&state, &order_id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
+}
+
+/// POST /api/orders/:id/done — mark the job done. Auth required.
+pub async fn mark_done(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<Value>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    sqlx::query("UPDATE orders SET status = 'done', updated_at = ? WHERE id = ?")
+        .bind(now_ms())
+        .bind(&id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
 }

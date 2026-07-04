@@ -183,3 +183,39 @@ Playwright UI flow (new ticket → estimate → Mark Approved → Approve → Ap
 - `apps/desktop/src/pages/job-ticket.tsx`
 
 ---
+
+## ✅ BACK-2-C008 · Mechanic Assignment  &  ✅ BACK-2-C007 · Mechanic "My Jobs" + Execution
+
+**Completed:** 2026-07-04 (built together as the mechanic view)
+**Original Backlog IDs:** BACK-2-008, BACK-2-007
+
+**What was implemented:**
+- **Migration 0003** — `order_items.completed INTEGER DEFAULT 0` (mechanics check off work).
+- Rust: `GET /api/users?role=` (active staff, never returns pin fields); `POST /api/orders/:id/assign`
+  (set/clear mechanic); `GET /api/orders?assigned=me` (active job board — approved + in_progress, optionally
+  filtered to the current user, each with a light nested asset); `PUT /api/order_items/:id/complete`
+  (check/uncheck; auto-bumps `approved → in_progress` on first check); `POST /api/orders/:id/done`
+  (`→ done`). `order_detail` now embeds the assigned `mechanic`.
+- **Assignment** (`AssignDialog`) on the job ticket detail: shows the assignee + an Assign button listing
+  staff; assign/unassign.
+- **"My Jobs" mobile view** (`pages/jobs.tsx`, route `/jobs`, dashboard card): touch-friendly card list of
+  the current user's active jobs (asset label, complaint, status badge, elapsed time); tap → ticket.
+- **Execution** on the ticket detail (shown when approved/in_progress): a Work Checklist of line items with
+  large checkboxes; checking updates completion (and starts the job); **Mark as Done** enables once all items
+  are checked → status `done`.
+
+**Verification:** cargo check + vite build clean; curl — mechanics list, assign (nested mechanic), complete
+item (→ in_progress), mark done (→ done), job board count; Playwright full-loop UI (login → ticket → estimate
+→ approve → **assign → check item → Mark as Done → Done** + My Jobs renders), zero console errors.
+
+**Note:** assignment lists all active staff (any can be assigned); mobile-first layout (~430px, ≥44px targets)
+per Plan.txt. Data access via HTTP API (D23).
+
+**Key files:**
+- `packages/db/migrations/sqlite/0003_order_item_completed.sql` (new), `packages/db/src/types.ts`
+- `apps/desktop/src-tauri/src/api_data.rs`, `apps/desktop/src-tauri/src/server.rs`
+- `apps/desktop/src/lib/users-api.ts` (new), `apps/desktop/src/lib/orders-api.ts`
+- `apps/desktop/src/features/repair/components/AssignDialog.tsx` (new), `apps/desktop/src/pages/jobs.tsx` (new)
+- `apps/desktop/src/pages/job-ticket.tsx`, `apps/desktop/src/App.tsx`, `apps/desktop/src/pages/dashboard.tsx`
+
+---

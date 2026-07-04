@@ -164,6 +164,7 @@ export interface OrderItemsTable {
     unit_price: number; // centavos
     total: number; // centavos
     inventory_item_id: Nullable<string>; // set when a part is picked from inventory
+    completed: ColumnType<number, number | undefined, number>; // 1 = done by mechanic
 }
 
 export type OrderItem = Selectable<OrderItemsTable>;

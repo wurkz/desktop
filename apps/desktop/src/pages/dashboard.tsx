@@ -29,6 +29,13 @@ export default function DashboardPage() {
             color: "from-blue-500 to-blue-600",
         },
         {
+            title: "My Jobs",
+            description: "Jobs assigned to you",
+            icon: ClipboardList,
+            href: "/jobs",
+            color: "from-amber-500 to-amber-600",
+        },
+        {
             title: "Inventory",
             description: "Track parts and stock levels",
             icon: Package,

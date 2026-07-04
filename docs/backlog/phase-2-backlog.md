@@ -40,42 +40,6 @@ No update or delete operations exist in `AssetRepository`. Required for correcti
 
 ---
 
-## BACK-2-007 · Mechanic Mobile — "My Jobs" View
-
-**Priority:** 🔴 High (marked CRITICAL in plan)  
-**Area:** `apps/desktop/src/features/repair/` or new mobile route  
-**Description:**  
-Mechanics use their phone to view and execute assigned jobs. This view must be touch-optimized with large tap targets.
-
-**Acceptance Criteria:**
-- [ ] Route `/jobs` accessible from the app
-- [ ] Card-based list of jobs filtered to `assigned_mechanic_id = current_user.id` (or all jobs for now)
-- [ ] Card shows: Asset name/plate, customer complaint summary, status badge, time elapsed
-- [ ] Tapping a card opens the Job Execution view
-- [ ] Job Execution view:
-  - Lists all `order_items` as checklist rows
-  - Each row has a checkbox — checking it marks as `completed`
-  - Once all items checked, "Mark as Done" button appears
-  - Confirms status → `in_progress` → `completed`
-- [ ] Full mobile-first layout (max-width ~430px, large touch targets ≥44px)
-
----
-
-## BACK-2-008 · Mechanic Assignment
-
-**Priority:** 🟡 Medium  
-**Area:** `packages/db/src/`, `packages/features/repair/`  
-**Description:**  
-Job tickets need to be assignable to a specific mechanic.
-
-**Acceptance Criteria:**
-- [ ] `orders` table gets `assigned_mechanic_id` column (migration required)
-- [ ] Advisor can assign/reassign a mechanic from the ticket detail view
-- [ ] "My Jobs" view filters by `assigned_mechanic_id = current_user.id`
-- [ ] Unassigned jobs visible to admin/advisor with an "Assign" button
-
----
-
 ## BACK-2-009 · Job Ticket — Completion & Invoice
 
 **Priority:** 🟡 Medium  
