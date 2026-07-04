@@ -122,6 +122,10 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
         )
         .route("/api/users", get(api_data::list_users))
         .route(
+            "/api/license",
+            get(api_data::get_license).post(api_data::load_license),
+        )
+        .route(
             "/api/inventory",
             get(api_data::search_inventory).post(api_data::create_inventory),
         )

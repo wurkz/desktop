@@ -7,6 +7,7 @@ fn greet(name: &str) -> String {
 pub mod api_data;
 pub mod auth;
 pub mod db;
+pub mod license;
 pub mod server;
 
 use tauri::Manager;

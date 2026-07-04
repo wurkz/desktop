@@ -61,3 +61,6 @@ logs
 tmp/
 temp/
 coverage/
+
+# Runtime data (DB, license, media) — never committed
+apps/desktop/data/

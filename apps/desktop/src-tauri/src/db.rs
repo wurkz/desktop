@@ -6,23 +6,21 @@ pub struct DbState {
     pub pool: Pool<Sqlite>,
 }
 
-pub async fn init_db(_app_handle: &AppHandle) -> Result<Pool<Sqlite>, String> {
-    // PORTABLE MODE: Use a 'data' folder next to the executable (or CWD)
-    // Fix: Move 'data' UP one level if in src-tauri to avoid infinite watch loop
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    
-    // If we are in 'src-tauri', go up. If we are in 'release' (exe), go up?
-    // Actually, for PORTABLE release, we usually want it NEXT to the exe.
-    // But 'cargo run' runs from a target dir?
-    // Let's settle on: "Apps/Desktop/data" for Dev.
-    
-    // Heuristic: If cwd ends in 'src-tauri', go up.
-    let data_dir = if cwd.ends_with("src-tauri") {
-        cwd.parent().unwrap_or(&cwd).join("data")
+// PORTABLE MODE: the 'data' folder lives next to the executable (or CWD), or one level up
+// when running from 'src-tauri' (dev) to avoid an infinite file-watch loop. Single source of
+// truth for the data location (DB, license file, media).
+pub fn data_dir() -> std::path::PathBuf {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    if cwd.ends_with("src-tauri") {
+        cwd.parent().map(|p| p.join("data")).unwrap_or_else(|| cwd.join("data"))
     } else {
         cwd.join("data")
-    };
-    
+    }
+}
+
+pub async fn init_db(_app_handle: &AppHandle) -> Result<Pool<Sqlite>, String> {
+    let data_dir = data_dir();
+
     if !data_dir.exists() {
         fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
     }

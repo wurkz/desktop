@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+default-run = "zorviz-desktop"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -34,4 +35,8 @@ hex = "0.4"
 uuid = { version = "1", features = ["v4"] }
 rust-embed = "8"
 mime_guess = "2"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+base64 = "0.22"
+machine-uid = "0.5"
 

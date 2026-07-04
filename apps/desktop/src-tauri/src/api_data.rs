@@ -548,6 +548,34 @@ pub async fn save_estimate(
     order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
 }
 
+// ---- Licensing ----
+
+/// GET /api/license — current license status (public; needed to gate the app pre-login).
+/// Always includes this device's `device_code` so the setup screen can show it.
+pub async fn get_license() -> Json<Value> {
+    let dd = crate::db::data_dir();
+    Json(serde_json::to_value(crate::license::read_license_status(&dd)).unwrap_or(Value::Null))
+}
+
+#[derive(Deserialize)]
+pub struct LoadLicenseReq {
+    content: String,
+}
+
+/// POST /api/license — install a license file (writes it next to the DB). Auth required.
+pub async fn load_license(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Json(req): Json<LoadLicenseReq>,
+) -> Result<Json<Value>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let dd = crate::db::data_dir();
+    crate::license::write_license(&dd, &req.content).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(serde_json::to_value(crate::license::read_license_status(&dd)).unwrap_or(Value::Null)))
+}
+
 // ---- Users / mechanic assignment & execution ----
 
 /// GET /api/users?role=mechanic — list active users (never returns pin fields). Auth required.

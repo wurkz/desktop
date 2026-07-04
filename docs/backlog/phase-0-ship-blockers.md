@@ -71,18 +71,27 @@ Offline license protection with issue-time fingerprint binding (see D17 for the 
 purchase being reused across branches. Also covers **trial / time-limited licenses** (D21). **⚠️ Heavy
 crypto+tooling item; adds no app usability — it extends the timeline. Recorded per owner's explicit choice.**
 
+**Progress:**
+- ✅ **Increment 1 (crypto core + generator + status endpoint) — done 2026-07-04.** `src-tauri/src/license.rs`:
+  Ed25519 verify against an embedded public key, device fingerprint (sha256 of OS machine-uid, 16-hex),
+  license file = `{data: base64(payload), sig: base64(ed25519)}`, status computation (valid / wrong_device /
+  expired / invalid / missing), BOM-tolerant. `licensegen` bin (`keygen` / `fingerprint` / `sign`). Endpoints
+  `GET /api/license` (public — always returns the device code) + `POST /api/license` (auth, installs the file).
+  `Cargo.toml` `default-run = "zorviz-desktop"` so `tauri dev` still launches the app. Verified via curl:
+  valid → valid+shop+device+modules; wrong-device → wrong_device; tampered → invalid (sig fails); missing → missing.
+- ⏳ **Increment 2** — trial (D21: frictionless self-start + issued; grace→read-only), app gating/limited state,
+  and UI (device-code display in setup/settings, load-license screen, status banner), reissue path.
+
 **Acceptance Criteria:**
-- [ ] Key pair generated; **private key stored securely by owner** (never shipped); public key embedded in app
-- [ ] Rust derives a stable device fingerprint (MachineGuid + CPU/disk hash)
-- [ ] Wizard/settings screen displays the device code for the owner to send in
-- [ ] "Load license" flow: app verifies signature (public key) + fingerprint match + expiry + modules
-- [ ] App refuses to run / enters limited state without a valid license for this device
-- [ ] License encodes enabled **modules** (foundation for the commercial model) *(Plan.txt §7)*
-- [ ] **License-generator tool** (CLI or mini-app) on the owner side: input shop name + fingerprint(s) +
-      modules + expiry (incl. trial length) → signed license file
-- [ ] **Reissue/transfer path** for hardware changes (documented process + tool support) — must not lock
-      out legitimate customers
-- [ ] Limitation documented: deters casual copying, not skilled reverse-engineering
+- [x] Key pair generated; **private key stored securely by owner** (never shipped); public key embedded in app *(dev key embedded; owner regenerates for prod)*
+- [x] Rust derives a stable device fingerprint *(OS machine-uid → sha256; MachineGuid on Windows)*
+- [ ] Wizard/settings screen displays the device code for the owner to send in *(Increment 2)*
+- [x] "Load license" flow: app verifies signature (public key) + fingerprint match + expiry + modules *(verify done + POST endpoint; UI screen in Increment 2)*
+- [ ] App refuses to run / enters limited state without a valid license for this device *(Increment 2 — no gating yet)*
+- [x] License encodes enabled **modules** (foundation for the commercial model) *(Plan.txt §7)*
+- [x] **License-generator tool** (`licensegen` bin): shop name + fingerprint(s) + modules + expiry → signed file *(trial length = `--expires`)*
+- [ ] **Reissue/transfer path** for hardware changes (documented process + tool support) *(Increment 2)*
+- [x] Limitation documented: deters casual copying, not skilled reverse-engineering *(license.rs + D17)*
 
 **Trial / time-limited license (D21):**
 - [ ] Licenses support an `expires` timestamp; trial = `now + N months` (N chosen at generation)
