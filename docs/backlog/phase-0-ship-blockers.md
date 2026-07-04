@@ -36,6 +36,11 @@ mobile = admin/advisor/mechanic. Built in the 4 increments listed in D23.
   asset 200, CORS allows tauri origin + rejects evil.example, LAN IP `:3030` serves 200. **Physical-phone
   end-to-end deferred to after Increment 3** (the phone loads but config/data still use `invoke`; it becomes
   fully functional once reads move to HTTP).
+- ✅ **Physical phone test PASSED (2026-07-04)** — a phone on the same Wi-Fi loaded the app from the
+  desktop over LAN (`http://<lan-ip>:3030`) and logged in against the Rust API. Increments 1–3 verified on
+  real hardware. (Required a one-time Windows Firewall rule for TCP 3030, added manually as admin.)
+  NOTE: fixing a React blank-screen (react/react-dom 19.2.7 match + UI peer-dep bumps) was needed first —
+  see the `fix:` commit. Lesson: verify RENDER (headless browser), not just compile.
 - ✅ **Increment 3 (first data endpoints + frontend migration) — done 2026-07-04.** Rust `api_data.rs`:
   `GET /api/config` (public — needed pre-login), `GET /api/assets?q=` + `POST /api/assets` (auth-guarded);
   generic `row_to_json` (NULL-safe) + `specs` JSON expansion; `tenant_id` sourced from `app_config` on create.
