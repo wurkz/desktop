@@ -289,6 +289,97 @@ pub async fn create_asset(
     Ok(Json(Value::Object(obj)))
 }
 
+#[derive(Deserialize)]
+pub struct UpdateAssetReq {
+    specs: Value,
+    owner_id: Option<String>,
+}
+
+/// PUT /api/assets/:id — edit an asset's specs and owner. Auth required. The asset
+/// TYPE is intentionally immutable (a shop's asset kind is fixed); to change type,
+/// delete and re-create. 404 if the asset is missing or already soft-deleted.
+pub async fn update_asset(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<UpdateAssetReq>,
+) -> Result<Json<Value>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let now = now_ms();
+    let specs_str = req.specs.to_string();
+    let result = sqlx::query(
+        "UPDATE assets SET specs = ?, owner_id = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+    )
+    .bind(&specs_str)
+    .bind(&req.owner_id)
+    .bind(now)
+    .bind(&id)
+    .execute(&state.pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    if result.rows_affected() == 0 {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    let row = sqlx::query("SELECT * FROM assets WHERE id = ? LIMIT 1")
+        .bind(&id)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let mut obj = row_to_json(&row);
+    parse_json_field(&mut obj, "specs");
+    Ok(Json(Value::Object(obj)))
+}
+
+/// DELETE /api/assets/:id — soft-delete (sets deleted_at; never destroys data, D24).
+/// Blocked (409) if the asset still has open job tickets (any status except paid/cancelled)
+/// so active work is never hidden. Auth required.
+pub async fn soft_delete_asset(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err((StatusCode::UNAUTHORIZED, "unauthorized".to_string()));
+    }
+
+    let open: i64 = sqlx::query(
+        "SELECT COUNT(*) AS c FROM orders WHERE asset_id = ? AND status NOT IN ('paid', 'cancelled')",
+    )
+    .bind(&id)
+    .fetch_one(&state.pool)
+    .await
+    .ok()
+    .and_then(|r| r.try_get::<i64, _>("c").ok())
+    .unwrap_or(0);
+    if open > 0 {
+        return Err((
+            StatusCode::CONFLICT,
+            format!(
+                "This asset has {} open job ticket(s). Close or finish them before deleting.",
+                open
+            ),
+        ));
+    }
+
+    let now = now_ms();
+    let result = sqlx::query("UPDATE assets SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+        .bind(now)
+        .bind(now)
+        .bind(&id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "delete failed".to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err((StatusCode::NOT_FOUND, "asset not found".to_string()));
+    }
+    Ok(Json(json!({ "ok": true })))
+}
+
 // ---- Job tickets (orders) ----
 
 #[derive(Deserialize)]

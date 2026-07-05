@@ -280,3 +280,41 @@ dedicated `AssetWithHistory.lastVisit` field.
 - `apps/desktop/src/features/repair/components/AssetDiscovery.tsx`, `apps/desktop/src/lib/repair-api.ts`
 
 ---
+
+## ✅ BACK-2-C011 · Asset Update & Soft-Delete
+
+**Completed:** 2026-07-05
+**Original Backlog ID:** BACK-2-003
+
+**What was implemented:**
+- Rust `PUT /api/assets/:id` (`update_asset`) — edits `specs` + `owner_id` (and bumps `updated_at`); 404 if the
+  asset is missing or already soft-deleted. **Asset type is intentionally immutable** (see owner decision +
+  BACK-1-006).
+- Rust `DELETE /api/assets/:id` (`soft_delete_asset`) — sets `deleted_at` (never destroys data, D24). **Blocked
+  with 409** and a clear message if the asset still has open job tickets (any status except `paid`/`cancelled`),
+  so active work is never hidden. `search_assets` already excluded `deleted_at IS NULL`, so soft-deleted assets
+  drop out of search automatically. No migration needed (`deleted_at` already existed).
+- **Edit form** (`AssetEditForm.tsx`): pre-filled dialog reached from an **Edit** button on the Asset Detail
+  header. Type is shown as a fixed, non-editable label ("Type can't be changed"); edits spec fields + owner
+  (via the same `EntityPicker` inline-create). Shares `SPEC_FIELDS`/`AssetType` (now exported) with the create
+  form; the verified create path was left untouched.
+- **Delete** button + confirmation dialog on Asset Detail; on the 409 block it surfaces the server message in
+  the dialog and keeps the asset. On success it navigates back to `/repair`.
+- `api.del()` helper added; `repair-api.ts` gained `updateAsset()` + `deleteAsset()`.
+
+**Verification:** tsc + vite build clean; Rust recompiled in dev. curl — edit persists (make/model added), 401
+(no token), 409 with message deleting ABC-1234 (open triage ticket), 200 deleting a ticket-free asset, and it
+then drops out of search. Playwright — Edit prefilled → add Color=Red → save → shown on page; delete-blocked
+asset shows the "open job ticket" message and stays; ticket-free asset deletes via UI → lands on `/repair` and
+is gone from search. Only console noise is the expected 409 network log (not a JS error).
+
+**⚠️ Deviation from original spec:** implemented as HTTP endpoints, **not** `AssetRepository.update/softDelete`
+TS methods (D23 single path). Added a **delete guard** (409 on open tickets) beyond the original spec, per the
+owner decision.
+
+**Key files:**
+- `apps/desktop/src-tauri/src/api_data.rs` (`update_asset`, `soft_delete_asset`), `apps/desktop/src-tauri/src/server.rs`
+- `apps/desktop/src/features/repair/components/AssetEditForm.tsx` (new), `.../AssetCreateForm.tsx` (exports)
+- `apps/desktop/src/pages/asset-detail.tsx`, `apps/desktop/src/lib/repair-api.ts`, `apps/desktop/src/lib/api.ts`
+
+---

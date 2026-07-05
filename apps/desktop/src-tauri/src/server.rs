@@ -109,7 +109,12 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
             "/api/assets",
             get(api_data::search_assets).post(api_data::create_asset),
         )
-        .route("/api/assets/:id", get(api_data::get_asset))
+        .route(
+            "/api/assets/:id",
+            get(api_data::get_asset)
+                .put(api_data::update_asset)
+                .delete(api_data::soft_delete_asset),
+        )
         .route(
             "/api/customers",
             get(api_data::search_customers).post(api_data::create_customer),

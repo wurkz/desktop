@@ -1,10 +1,24 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, CardHeader, CardTitle, CardContent } from "@zorviz/ui";
-import { ArrowLeft, Car, Smartphone, Package } from "lucide-react";
+import {
+    Button,
+    Card,
+    CardHeader,
+    CardTitle,
+    CardContent,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@zorviz/ui";
+import { ArrowLeft, Car, Smartphone, Package, Pencil, Trash2 } from "lucide-react";
 import { formatMoney } from "@zorviz/core";
-import { getAsset, type AssetDetail } from "../lib/repair-api";
+import { getAsset, deleteAsset, type AssetDetail } from "../lib/repair-api";
+import { ApiError } from "../lib/api";
 import { StatusBadge } from "../components/status-badge";
+import { AssetEditForm } from "../features/repair/components/AssetEditForm";
 import { useAppConfigStore } from "../stores/app-config";
 
 const TYPE_ICON: Record<string, typeof Car> = { vehicle: Car, gadget: Smartphone, appliance: Package };
@@ -34,11 +48,35 @@ export default function AssetDetailPage() {
     const currency = useAppConfigStore((s) => s.config?.currency_symbol ?? "");
     const [asset, setAsset] = useState<AssetDetail | null>(null);
     const [error, setError] = useState("");
+    const [editOpen, setEditOpen] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState("");
 
-    useEffect(() => {
+    const load = useCallback(() => {
         if (!id) return;
         getAsset(id).then(setAsset).catch(() => setError("Could not load this asset."));
     }, [id]);
+
+    useEffect(() => {
+        load();
+    }, [load]);
+
+    const doDelete = async () => {
+        if (!id) return;
+        setDeleting(true);
+        setDeleteError("");
+        try {
+            await deleteAsset(id);
+            navigate("/repair");
+        } catch (e) {
+            setDeleteError(
+                e instanceof ApiError && e.message ? e.message : "Could not delete this asset."
+            );
+        } finally {
+            setDeleting(false);
+        }
+    };
 
     const Icon = asset ? TYPE_ICON[asset.type] ?? Package : Package;
     const specEntries = asset
@@ -52,6 +90,16 @@ export default function AssetDetailPage() {
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <h1 className="text-lg font-bold">Asset</h1>
+                {asset && (
+                    <div className="ml-auto flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                            <Pencil className="w-4 h-4 mr-1" /> Edit
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => { setDeleteError(""); setConfirmDelete(true); }}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                    </div>
+                )}
             </header>
 
             <main className="p-4 max-w-md mx-auto space-y-4">
@@ -122,6 +170,35 @@ export default function AssetDetailPage() {
                     </>
                 )}
             </main>
+
+            {asset && (
+                <AssetEditForm
+                    open={editOpen}
+                    onOpenChange={setEditOpen}
+                    asset={asset}
+                    onUpdated={() => load()}
+                />
+            )}
+
+            <Dialog open={confirmDelete} onOpenChange={(o) => { if (!deleting) setConfirmDelete(o); }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete this asset?</DialogTitle>
+                        <DialogDescription>
+                            It will be hidden from search. Its past job tickets and their data stay intact.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={doDelete} disabled={deleting}>
+                            {deleting ? "Deleting…" : "Delete"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

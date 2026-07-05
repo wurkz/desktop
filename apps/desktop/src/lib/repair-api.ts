@@ -35,3 +35,19 @@ export interface AssetDetail {
 export function getAsset(id: string): Promise<AssetDetail> {
     return api.get<AssetDetail>(`/api/assets/${id}`);
 }
+
+// Edit an asset's specs + owner. Type is immutable (fixed per shop) and not sent.
+export function updateAsset(
+    id: string,
+    input: { specs: Record<string, string>; ownerId?: string | null }
+): Promise<AssetDetail> {
+    return api.put<AssetDetail>(`/api/assets/${id}`, {
+        specs: input.specs,
+        owner_id: input.ownerId ?? null,
+    });
+}
+
+// Soft-delete an asset. Throws ApiError(409) if it still has open job tickets.
+export function deleteAsset(id: string): Promise<{ ok: boolean }> {
+    return api.del<{ ok: boolean }>(`/api/assets/${id}`);
+}

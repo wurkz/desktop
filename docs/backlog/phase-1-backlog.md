@@ -87,3 +87,32 @@ Plan mentions Hardware IO (Printers, Scanners) as a Core Kernel responsibility. 
 - [ ] Tauri plugin for serial/USB communication identified and documented (even if not implemented)
 
 ---
+
+## BACK-1-006 · Shop Asset-Type Configuration
+
+**Priority:** 🟡 Medium
+**Area:** setup wizard (`pages/setup.tsx`), settings (`pages/settings.tsx`), asset create form, `app_config`
+**Origin:** Owner insight (2026-07-05, while doing BACK-2-003)
+
+**Description:**
+Asset **type** should not be a per-asset choice — it is a property of the *shop*. A car-aircon repair shop
+deals with vehicles for the app's entire lifetime; a phone-repair shop deals with gadgets. Today the asset
+create form always offers all three types (vehicle/gadget/appliance), which is noise for a single-domain shop
+and lets staff mis-file assets. The shop's asset type(s) should be chosen **once during onboarding** (and
+adjustable in **Settings**), then the asset create form should default to / be constrained to the shop's
+configured type(s). Per-asset type remains immutable (already enforced in BACK-2-C011).
+
+**Acceptance Criteria:**
+- [ ] `app_config` stores the shop's enabled asset type(s) (e.g. an `asset_types` JSON/text column; likely a
+      single primary type for most shops, but allow multiple)
+- [ ] Setup wizard step: choose the shop's asset type(s) on first run (default sensible if skipped)
+- [ ] Settings page: edit the enabled asset type(s) (admin/owner only, consistent with BACK-1-C004)
+- [ ] Asset create form only offers the shop's enabled type(s); if exactly one, the type selector is hidden and
+      that type is pre-selected
+- [ ] Existing assets of a now-disabled type still display/search correctly (don't hide historical data — D24)
+
+**Open questions (discuss before build):**
+- Single primary type vs. multi-select? (Owner leaned "usually fixed to one" — a car shop is cars for life.)
+- Should disabling a type that has existing assets be blocked or just hidden from new-asset creation?
+
+---
