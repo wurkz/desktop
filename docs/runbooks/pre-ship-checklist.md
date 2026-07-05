@@ -11,17 +11,19 @@ This checklist references it; it does not repeat the key-generation detail.
 
 ---
 
-## ⚠️ Read first — one known risk to confirm
+## Where app data lives (by build type)
 
-The app runs in **portable mode**: `data_dir()` (in `src-tauri/src/db.rs`) resolves the data
-folder (DB, `media/`, backups, license) from the **current working directory** — great in dev,
-but an **installed** app launched from a Start-Menu shortcut often has its working directory set
-to `C:\Windows\System32` (or the shortcut's "Start in" value), **not** the install folder.
+`data_dir()` (in `src-tauri/src/db.rs`) is the single source of truth for the DB, `media/`,
+backups, and the license file. It resolves differently by build:
 
-**Phase 4 must confirm where the DB actually lands.** If it lands somewhere unwritable or
-unexpected, `data_dir()` needs to switch to an explicit location for installed builds — the exe's
-own folder via `std::env::current_exe()` (true portable), or a per-user path like
-`%APPDATA%\Zorviz`. Treat this as a likely fix before shipping, not an afterthought.
+- **Dev (debug):** `apps/desktop/data` (next to the app source; one level up from `src-tauri`).
+- **Installed (release):** **`%LOCALAPPDATA%\Zorviz\data`** — a stable, always-writable per-user
+  location (falls back to `%APPDATA%`, then the exe folder). This deliberately avoids using the
+  install folder, because a Program-Files install is read-only for normal users.
+
+Phase 4 verifies the installed app actually creates its DB at `%LOCALAPPDATA%\Zorviz\data` and
+reuses it across restarts. (This was hardened specifically for the installed build — earlier it
+keyed off the working directory, which is unreliable for a shortcut-launched app.)
 
 ---
 
@@ -93,16 +95,17 @@ Copy the MSI (or setup.exe) to the **clean machine** and install it.
 - [ ] Installer runs and completes; Zorviz launches from the Start Menu.
 - [ ] **Setup wizard appears** on first run (Shop Details → Custom Fields → Currency & Tax →
       What You Service → Admin Account) and completes; you land on the login screen and can log in.
-- [ ] **Find the data folder** the app actually created (the ⚠️ risk above):
+- [ ] **Confirm the data folder** is the expected per-user location:
 
 ```powershell
-Get-ChildItem -Path C:\ -Recurse -Filter zorviz.db -ErrorAction SilentlyContinue -Force | Select-Object FullName, Length
+Get-ChildItem "$env:LOCALAPPDATA\Zorviz\data" | Select-Object Name, Length
 ```
 
-  - **Expected (portable):** next to the installed `Zorviz.exe` (…\Program Files\Zorviz\… or wherever
-    it installed), in a `data\` folder.
-  - **If it's in `System32`, the user profile, or a read-only path** → the `data_dir()` fix is needed
-    (switch to `current_exe()` folder or `%APPDATA%\Zorviz`). Fix, rebuild (Phase 3), retest.
+  - **Expected:** `zorviz.db` (plus `media\`, `backups\` once used) under `%LOCALAPPDATA%\Zorviz\data`.
+  - If it's empty, sanity-check nothing landed elsewhere:
+    `Get-ChildItem -Path C:\ -Recurse -Filter zorviz.db -ErrorAction SilentlyContinue -Force | Select-Object FullName`.
+    A DB in `System32` / a read-only path would mean the release `data_dir()` branch regressed — revisit
+    `db.rs`, rebuild (Phase 3), retest.
 - [ ] Restart the app once — confirm it **reuses** the same DB (your shop name persists, no second
       setup wizard). This proves the data path is stable across launches.
 
@@ -177,8 +180,8 @@ Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -ne 'WellK
 
 - [ ] Production public key embedded; dev key gone (Phase 1).
 - [ ] Installer builds; artifacts located (Phase 3).
-- [ ] Clean-machine install: wizard → login → **DB lands in a stable, writable, portable location** and
-      persists across restarts (Phase 4). ← the one most likely to need a code fix.
+- [ ] Clean-machine install: wizard → login → **DB lands in `%LOCALAPPDATA%\Zorviz\data`** and persists
+      across restarts (Phase 4).
 - [ ] Firewall rule present; phone reaches the app over LAN and can shoot a photo (Phases 5–6).
 - [ ] Production license installs and reads **valid** (Phase 7).
 - [ ] DB-only + Full backups work; a full restore round-trips (Phase 8).

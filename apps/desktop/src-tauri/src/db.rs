@@ -6,16 +6,36 @@ pub struct DbState {
     pub pool: Pool<Sqlite>,
 }
 
-// PORTABLE MODE: the 'data' folder lives next to the executable (or CWD), or one level up
-// when running from 'src-tauri' (dev) to avoid an infinite file-watch loop. Single source of
-// truth for the data location (DB, license file, media).
+// Single source of truth for the data location (DB, license, media, backups).
+//
+// - **Dev (debug builds):** the working directory is the project, so keep `data` next to the app
+//   source — one level up when launched from `src-tauri` (avoids the dev file-watch loop),
+//   otherwise `<cwd>/data`. This matches how `npm run tauri dev` runs.
+// - **Installed (release builds):** an installed app's working directory is unreliable (often
+//   `System32`) and its exe folder (e.g. `Program Files\Zorviz`) is read-only for normal users.
+//   Use a stable, always-writable per-user location: `%LOCALAPPDATA%\Zorviz\data`
+//   (falling back to `%APPDATA%`, then the exe folder, then the cwd).
 pub fn data_dir() -> std::path::PathBuf {
-    let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    if cwd.ends_with("src-tauri") {
-        cwd.parent().map(|p| p.join("data")).unwrap_or_else(|| cwd.join("data"))
-    } else {
-        cwd.join("data")
+    use std::path::PathBuf;
+
+    if cfg!(debug_assertions) {
+        let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        return if cwd.ends_with("src-tauri") {
+            cwd.parent().map(|p| p.join("data")).unwrap_or_else(|| cwd.join("data"))
+        } else {
+            cwd.join("data")
+        };
     }
+
+    if let Some(base) = std::env::var_os("LOCALAPPDATA").or_else(|| std::env::var_os("APPDATA")) {
+        return PathBuf::from(base).join("Zorviz").join("data");
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            return dir.join("data");
+        }
+    }
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")).join("data")
 }
 
 pub async fn init_db(_app_handle: &AppHandle) -> Result<Pool<Sqlite>, String> {
