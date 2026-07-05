@@ -39,4 +39,5 @@ ed25519-dalek = { version = "2", features = ["rand_core"] }
 rand = "0.8"
 base64 = "0.22"
 machine-uid = "0.5"
+zip = { version = "2", default-features = false, features = ["deflate"] }
 

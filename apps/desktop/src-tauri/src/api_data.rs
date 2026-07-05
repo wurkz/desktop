@@ -921,6 +921,17 @@ pub async fn backup_now(State(state): State<ApiState>, headers: HeaderMap) -> Re
     Ok(Json(json!({ "name": name })))
 }
 
+/// POST /api/backup-full — on-demand full backup (DB + media, single zip). Auth required.
+pub async fn backup_full(State(state): State<ApiState>, headers: HeaderMap) -> Result<Json<Value>, StatusCode> {
+    if session_from_headers(&state, &headers).is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let name = crate::backup::full_backup_now(&state.pool, &crate::db::data_dir())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(json!({ "name": name })))
+}
+
 pub async fn list_backups(State(state): State<ApiState>, headers: HeaderMap) -> Result<Json<Value>, StatusCode> {
     if session_from_headers(&state, &headers).is_none() {
         return Err(StatusCode::UNAUTHORIZED);

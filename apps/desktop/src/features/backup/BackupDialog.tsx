@@ -9,8 +9,8 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@zorviz/ui";
-import { Save, RotateCcw, FolderCog } from "lucide-react";
-import { listBackups, backupNow, restoreBackup, setBackupDir, type BackupInfo } from "../../lib/backup-api";
+import { Save, RotateCcw, FolderCog, Images } from "lucide-react";
+import { listBackups, backupNow, fullBackup, restoreBackup, setBackupDir, type BackupInfo } from "../../lib/backup-api";
 
 interface Props {
     open: boolean;
@@ -49,6 +49,20 @@ export function BackupDialog({ open, onOpenChange }: Props) {
             await refresh();
         } catch {
             setNote("Backup failed.");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const doFullBackup = async () => {
+        setBusy(true);
+        setNote("Creating full backup (with photos)…");
+        try {
+            const { name } = await fullBackup();
+            setNote(`Full backup: ${name}`);
+            await refresh();
+        } catch {
+            setNote("Full backup failed.");
         } finally {
             setBusy(false);
         }
@@ -103,9 +117,18 @@ export function BackupDialog({ open, onOpenChange }: Props) {
                         </div>
                     </div>
 
-                    <Button onClick={doBackup} disabled={busy} className="w-full">
-                        <Save className="w-4 h-4 mr-1" /> Back Up Now
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button onClick={doBackup} disabled={busy}>
+                            <Save className="w-4 h-4 mr-1" /> Back Up Now
+                        </Button>
+                        <Button variant="outline" onClick={doFullBackup} disabled={busy}>
+                            <Images className="w-4 h-4 mr-1" /> Full Backup
+                        </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground -mt-2">
+                        "Back Up Now" saves the database only (fast). "Full Backup" makes a single .zip with the
+                        database <em>and</em> photos/logo — best for off-site copies.
+                    </p>
 
                     <div className="space-y-1">
                         <Label>Available backups</Label>
@@ -114,7 +137,12 @@ export function BackupDialog({ open, onOpenChange }: Props) {
                             {backups.map((b) => (
                                 <div key={b.name} className="flex items-center justify-between gap-2 p-2 text-sm">
                                     <div className="min-w-0">
-                                        <div className="truncate font-mono text-xs">{b.name}</div>
+                                        <div className="truncate font-mono text-xs">
+                                            {b.name}
+                                            {b.name.endsWith(".zip") && (
+                                                <span className="ml-2 rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-sans">full</span>
+                                            )}
+                                        </div>
                                         <div className="text-xs text-muted-foreground">
                                             {(b.size / 1024).toFixed(0)} KB · {new Date(b.modified).toLocaleString()}
                                         </div>

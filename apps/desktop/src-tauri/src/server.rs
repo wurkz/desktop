@@ -167,6 +167,7 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
             get(api_data::get_license).post(api_data::load_license),
         )
         .route("/api/backup", post(api_data::backup_now))
+        .route("/api/backup-full", post(api_data::backup_full))
         .route("/api/backups", get(api_data::list_backups))
         .route("/api/restore", post(api_data::restore_backup))
         .route("/api/backup-dir", post(api_data::set_backup_dir))

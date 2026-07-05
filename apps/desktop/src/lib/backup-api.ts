@@ -14,6 +14,11 @@ export function backupNow(): Promise<{ name: string }> {
     return api.post<{ name: string }>("/api/backup");
 }
 
+// Full backup: a single .zip with the DB + all media (logo + ticket photos).
+export function fullBackup(): Promise<{ name: string }> {
+    return api.post<{ name: string }>("/api/backup-full");
+}
+
 export function restoreBackup(filename: string): Promise<{ restart_required: boolean }> {
     return api.post<{ restart_required: boolean }>("/api/restore", { filename });
 }

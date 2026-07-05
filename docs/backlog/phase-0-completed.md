@@ -77,10 +77,21 @@ works with the new PIN. UI: Staff card → Users page → Add User dialog, zero 
 returns dir + count; restore stages `restore-pending.db` (`restart_required: true`) leaving the live DB intact;
 `../zorviz.db` → 400. UI: dialog opens, "Back Up Now" updates the list — zero console errors.
 
+**Update 2026-07-05 — Full Backup (media included).** Added an on-demand **Full Backup** that captures the DB
+**plus all media** (logo + ticket photos), closing the earlier "media isn't backed up" gap.
+- `full_backup_now` writes a single **`zorviz-full-<ts>.zip`** = a VACUUM'd `zorviz.db` + the whole `media/`
+  tree (separate `KEEP_FULL=5` retention). The rolling **auto/launch backups stay DB-only** (fast, small).
+- Restore is now format-aware: a `.db` restores just the database (as before); a `.zip` extracts to
+  `restore-pending.db` + `restore-pending-media/`, and `apply_pending_restore` swaps in **both** the DB and the
+  `media/` tree on next launch. `POST /api/backup-full`; `list_backups` includes `.zip` (UI tags them "full").
+- **Verified:** full backup zip contains `zorviz.db` + every media file at the right relative paths; list shows
+  it; staging a `.zip` restore extracts DB + media tree; **after an app restart** the staging is consumed, the
+  DB + media are restored (logo served 200, order photos intact), zero console errors.
+
 **Key files:**
 - `packages/db/migrations/sqlite/0004_backup_dir.sql` (new), `packages/db/src/types.ts`
-- `apps/desktop/src-tauri/src/backup.rs` (new), `apps/desktop/src-tauri/src/lib.rs`, `src/api_data.rs`, `src/server.rs`
-- `apps/desktop/src/lib/backup-api.ts` (new), `apps/desktop/src/features/backup/BackupDialog.tsx` (new), `apps/desktop/src/pages/dashboard.tsx`
+- `apps/desktop/src-tauri/src/backup.rs` (new; + `full_backup_now`, zip-aware restore), `apps/desktop/src-tauri/src/lib.rs`, `src/api_data.rs`, `src/server.rs`; `Cargo.toml` (`zip`)
+- `apps/desktop/src/lib/backup-api.ts` (new; `fullBackup`), `apps/desktop/src/features/backup/BackupDialog.tsx` (new; Full Backup button), `apps/desktop/src/pages/dashboard.tsx`
 
 ---
 
@@ -415,8 +426,8 @@ production-update safety fix, not cosmetic.
 wizard step was skipped to avoid a pre-auth upload path (no user/session exists mid-wizard); a shop sets its
 logo right after setup in Settings. Adding it to onboarding later is a small follow-up. `app_config.logo_path`
 stores a relative path (`media/logo.<ext>`); the browser always fetches via `GET /api/logo`, not the raw path.
-Note: logos live under `{data_dir}/media` and are **not** included in the SQLite `VACUUM INTO` backup
-(BACK-0-C008) — a known limitation.
+Note: logos live under `{data_dir}/media`; the rolling DB-only backups don't include them, but the
+**Full Backup** (BACK-0-C008 update, 2026-07-05) captures `media/` — so logos are now covered.
 
 **Verification:** builds clean; Rust recompiled in dev. curl — 404 before upload, upload → `media/logo.png`,
 `GET` 200 `image/png`, config `logo_path` set, bad ext 400, **mechanic 403**, delete → 200 → `GET` 404 + media

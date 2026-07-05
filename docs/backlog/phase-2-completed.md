@@ -400,9 +400,10 @@ Playwright — open ticket → Photos section → add photo (thumbnail count ris
 add a note → it appears with author; delete button visible to admin. Zero console errors.
 
 **⚠️ Notes / deviations:** implemented over the HTTP API (no Tauri fs plugin needed — works on phones too).
-`GET /api/photos/:id` is public (same-origin `<img>`, unguessable UUID). `media/` is **not** in the SQLite
-`VACUUM INTO` backup (same known limitation as the logo). Intake-form-embedded capture was not added — photos
-are added on the ticket (available immediately after intake), per the finalized design.
+`GET /api/photos/:id` is public (same-origin `<img>`, unguessable UUID). Photos live under `media/`; the rolling
+DB-only backups don't include them, but the **Full Backup** (BACK-0-C008 update, 2026-07-05) captures `media/`
+— so photos are now covered. Intake-form-embedded capture was not added — photos are added on the ticket
+(available immediately after intake), per the finalized design.
 
 **Key files:**
 - `packages/db/migrations/sqlite/0007_order_photos.sql`, `packages/db/src/types.ts`
