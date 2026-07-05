@@ -22,11 +22,14 @@ interface Props {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onCreated: (asset: AssetWithHistory) => void;
+    // Convert-from-booking prefill (BACK-2-010): preselect an owner and show a note hint.
+    initialOwner?: Customer | null;
+    hint?: string;
 }
 
 // Data-driven asset creation (BACK-1-006): types + fields come from the shop's
 // configured asset_types (only those flagged show_on_create). One type → no picker.
-export function AssetCreateForm({ open, onOpenChange, onCreated }: Props) {
+export function AssetCreateForm({ open, onOpenChange, onCreated, initialOwner, hint }: Props) {
     const [types, setTypes] = useState<AssetType[]>([]);
     const [typeKey, setTypeKey] = useState<string>("");
     const [specs, setSpecs] = useState<Record<string, string>>({});
@@ -38,7 +41,7 @@ export function AssetCreateForm({ open, onOpenChange, onCreated }: Props) {
     useEffect(() => {
         if (!open) return;
         setSpecs({});
-        setOwner(null);
+        setOwner(initialOwner ?? null);
         setError("");
         listAssetTypes()
             .then((all) => {
@@ -98,6 +101,11 @@ export function AssetCreateForm({ open, onOpenChange, onCreated }: Props) {
                 </DialogHeader>
 
                 <div className="space-y-4">
+                    {hint && (
+                        <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+                            <span className="font-medium">From booking:</span> {hint}
+                        </div>
+                    )}
                     {types.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             No asset types are set to show at ticket creation. Add or enable one in Settings.

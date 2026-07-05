@@ -6,21 +6,6 @@
 
 ---
 
-## BACK-2-010 · Booking CRUD
-
-**Priority:** 🟢 Low  
-**Area:** `packages/features/repair/src/dal/`, `apps/desktop/src/features/repair/`  
-**Description:**  
-`BookingsTable` schema exists but has no repository or UI.
-
-**Acceptance Criteria:**
-- [ ] `BookingRepository` created with `create`, `list`, `updateStatus` methods
-- [ ] "Today's Schedule" view on dashboard or repair page showing pending bookings
-- [ ] "Convert to Job Ticket" action on a booking skips the Asset Recognition step
-- [ ] Booking status transitions: `pending` → `confirmed` → `in_progress` → `completed`
-
----
-
 ## BACK-2-011 · Photo Capture & Local File Store
 
 **Priority:** 🟡 Medium  

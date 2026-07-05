@@ -318,3 +318,49 @@ owner decision.
 - `apps/desktop/src/pages/asset-detail.tsx`, `apps/desktop/src/lib/repair-api.ts`, `apps/desktop/src/lib/api.ts`
 
 ---
+
+## ✅ BACK-2-C012 · Lightweight Bookings + Convert-to-Ticket
+
+**Completed:** 2026-07-05
+**Original Backlog ID:** BACK-2-010
+**Traces to:** D10 (unified booking/walk-in flow)
+
+**What was implemented (owner decision: lightweight):**
+A booking is a quick **call-ahead note** — customer name/phone + free-text note + time, *no asset yet*. When
+the customer arrives, an **admin/advisor converts** it into the normal asset → job-ticket flow, pre-filled.
+
+- **Migration 0006** rebuilds `bookings` (the original NOT NULL asset/customer FK table was never used):
+  `customer_name, customer_phone, note, scheduled_time, status, asset_id (nullable), customer_id (nullable)`.
+  Nullable links leave room to attach a known asset at booking time later, with no migration.
+- **Rust** (`bookings.rs`): `GET /api/bookings` (active pending/confirmed by time; `?scope=all`),
+  `POST /api/bookings` (create pending; requires a name or a note), `POST /api/bookings/:id/status`
+  (`{status, asset_id?, customer_id?}` — advances status and links on convert). All **front-desk only**
+  (owner/admin/advisor) via a new `require_staff` helper — mechanics get 403.
+- **Bookings page** (`pages/bookings.tsx`, route `/bookings`, staff-gated dashboard card): upcoming list with
+  **Confirm / Cancel / Convert** actions and a **New Booking** dialog (name, phone, note, datetime).
+- **Convert** (the D10 convergence): creates a customer from the booking's name/phone, then opens the shared
+  `AssetCreateForm` (owner pre-filled + a "From booking: …" note hint) → on asset create, opens the shared
+  `IntakeForm` (complaint pre-filled from the note) → on ticket create, marks the booking `completed` and links
+  the new asset + customer, then navigates to the ticket. Both dialogs gained small optional prefill props
+  (`initialOwner`/`hint`, `initialComplaint`/`onCreated`).
+
+**⚠️ Deviations from the original spec (intentional):** implemented via HTTP endpoints, not a
+`BookingRepository` (D23). Because bookings are lightweight (no asset until convert), "Convert skips Asset
+Recognition" became "Convert *is* the asset step, pre-filled" — the asset is picked/created at convert. Status
+flow used: `pending → confirmed → completed` (+ `cancelled`); `in_progress` is available but the convert marks
+`completed` once a ticket exists. Schedule lists active (pending/confirmed) bookings, not strictly "today".
+
+**Verification:** builds clean; Rust recompiled in dev. curl — create/list/confirm, **mechanic 403** on
+list+create, empty booking 400. Playwright — dashboard → Bookings → New Booking → **Convert** → New Asset opens
+with owner pre-filled + note hint → pick Vehicle → create → Intake opens with the **complaint pre-filled** →
+create ticket. API confirmed the converted booking is `completed` with asset+customer linked and gone from the
+active schedule. Zero console errors.
+
+**Key files:**
+- `packages/db/migrations/sqlite/0006_bookings_lightweight.sql`, `packages/db/src/types.ts`
+- `apps/desktop/src-tauri/src/bookings.rs` (new), `.../api_data.rs` (`require_staff`), `.../server.rs`, `.../lib.rs`
+- `apps/desktop/src/lib/bookings-api.ts` (new), `apps/desktop/src/pages/bookings.tsx` (new)
+- `apps/desktop/src/features/repair/components/{AssetCreateForm,IntakeForm}.tsx` (prefill props)
+- `apps/desktop/src/App.tsx` (route), `apps/desktop/src/pages/dashboard.tsx` (card)
+
+---

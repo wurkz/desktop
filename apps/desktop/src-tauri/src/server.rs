@@ -18,6 +18,7 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::api_data;
 use crate::asset_types;
+use crate::bookings;
 use crate::auth::{self, ApiState, AuthState};
 
 const PORT: u16 = 3030;
@@ -115,6 +116,11 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
             "/api/asset-types/:id",
             axum::routing::put(asset_types::update_asset_type).delete(asset_types::delete_asset_type),
         )
+        .route(
+            "/api/bookings",
+            get(bookings::list_bookings).post(bookings::create_booking),
+        )
+        .route("/api/bookings/:id/status", post(bookings::set_booking_status))
         .route(
             "/api/assets",
             get(api_data::search_assets).post(api_data::create_asset),
