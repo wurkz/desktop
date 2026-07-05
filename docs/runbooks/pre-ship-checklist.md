@@ -79,7 +79,8 @@ cd apps\desktop; npm run tauri build
 - [ ] Build completes without error. Artifacts land under
       `apps\desktop\src-tauri\target\release\bundle\`:
   - MSI:  `msi\Zorviz_<version>_x64_en-US.msi`
-  - NSIS: `nsis\Zorviz_<version>_x64-setup.exe`
+  - NSIS: `nsis\Zorviz_<version>_x64-setup.exe`  ← **ship this one**: it installs perMachine
+    (elevated) and auto-adds the LAN firewall rule (Phase 5). The MSI has neither hook.
 - [ ] Note the exact file names/paths for the next phase:
 
 ```powershell
@@ -113,23 +114,25 @@ Get-ChildItem "$env:LOCALAPPDATA\Zorviz\data" | Select-Object Name, Length
 
 ## Phase 5 — Firewall rule for LAN (TCP 3030)
 
-Phones reach the app at `http://<pc-lan-ip>:3030`. The app *attempts* to add the inbound rule at
-startup, but that **only succeeds if the process is elevated**. Make it deterministic:
+Phones reach the app at `http://<pc-lan-ip>:3030`. **The NSIS installer now adds this rule
+automatically** (`installer-hooks.nsh` → `NSIS_HOOK_POSTINSTALL`), which works because the NSIS
+installer runs elevated (`installMode: perMachine`). It's removed on uninstall.
 
-- [ ] On the shop PC, in an **Administrator** PowerShell, add the rule once:
-
-```powershell
-New-NetFirewallRule -DisplayName "Zorviz LAN Server (Port 3030)" -Direction Inbound -Protocol TCP -LocalPort 3030 -Action Allow
-```
-
-- [ ] Verify it exists:
+- [ ] After installing (Phase 4), verify the rule exists — no admin action needed:
 
 ```powershell
 Get-NetFirewallRule -DisplayName "Zorviz LAN Server (Port 3030)"
 ```
 
-  > Consider baking this into the installer (NSIS hook) as a fast-follow so shops don't need an admin
-  > step. For v1, this manual command (or running the app once as admin) is acceptable.
+  - **Fallback** (only if you shipped the **MSI** instead of the NSIS `setup.exe`, or the rule is
+    missing) — add it once in an **Administrator** PowerShell:
+
+```powershell
+New-NetFirewallRule -DisplayName "Zorviz LAN Server (Port 3030)" -Direction Inbound -Protocol TCP -LocalPort 3030 -Action Allow
+```
+
+  > The firewall hook is **NSIS-only** — ship the NSIS `setup.exe` for the self-configuring install.
+  > The app also makes a best-effort attempt at startup, but only succeeds when run elevated.
 
 ---
 
@@ -182,7 +185,8 @@ Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -ne 'WellK
 - [ ] Installer builds; artifacts located (Phase 3).
 - [ ] Clean-machine install: wizard → login → **DB lands in `%LOCALAPPDATA%\Zorviz\data`** and persists
       across restarts (Phase 4).
-- [ ] Firewall rule present; phone reaches the app over LAN and can shoot a photo (Phases 5–6).
+- [ ] Firewall rule auto-added by the NSIS installer; phone reaches the app over LAN and can shoot a
+      photo (Phases 5–6).
 - [ ] Production license installs and reads **valid** (Phase 7).
 - [ ] DB-only + Full backups work; a full restore round-trips (Phase 8).
 
@@ -199,4 +203,3 @@ Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -ne 'WellK
 
 - **BACK-0-012** — online enforcement / remote kill-switch (needs the first hosted backend). The
   offline signed license (BACK-0-006) is what ships in v1.
-- Installer-managed firewall rule (NSIS hook) — nice-to-have to remove the manual admin step.
