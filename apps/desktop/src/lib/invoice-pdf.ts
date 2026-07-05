@@ -93,7 +93,13 @@ export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | 
     const s = (ticket.asset?.specs ?? {}) as Record<string, string>;
     const assetLabel = s.plateNumber || s.serialNumber || s.imei || [s.make, s.model].filter(Boolean).join(" ") || "Asset";
     doc.text(`Asset: ${assetLabel}${ticket.asset?.type ? ` (${ticket.asset.type})` : ""}`, left, y);
-    y += 9;
+    y += 4.5;
+    if (ticket.senior_pwd_type) {
+        const lbl = ticket.senior_pwd_type === "pwd" ? "PWD" : "Senior Citizen";
+        doc.text(`OSCA/PWD ID No.: ${ticket.senior_pwd_id ?? "—"}  (${lbl})`, left, y);
+        y += 4.5;
+    }
+    y += 5;
 
     // Line items table (QTY · UNIT · DESCRIPTION · UNIT PRICE · AMOUNT)
     const qtyX = 108, unitX = 116, priceX = 165;
@@ -128,7 +134,8 @@ export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | 
     };
     totalRow("Subtotal", formatMoney(ticket.subtotal, currency));
     if (ticket.discount > 0) totalRow("Discount", `-${formatMoney(ticket.discount, currency)}`);
-    totalRow("Tax", formatMoney(ticket.tax, currency));
+    if (ticket.senior_discount > 0) totalRow("Senior/PWD Disc. (20%)", `-${formatMoney(ticket.senior_discount, currency)}`);
+    totalRow(ticket.senior_pwd_type ? "Tax (VAT-exempt)" : "Tax", formatMoney(ticket.tax, currency));
     totalRow("Total", formatMoney(ticket.total, currency), true);
 
     // Terms & Conditions block (only if configured).

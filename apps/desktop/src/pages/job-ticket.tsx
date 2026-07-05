@@ -10,7 +10,9 @@ import { EstimateBuilder } from "../features/repair/components/EstimateBuilder";
 import { ApprovalDialog } from "../features/repair/components/ApprovalDialog";
 import { AssignDialog } from "../features/repair/components/AssignDialog";
 import { TicketPhotos } from "../features/repair/components/TicketPhotos";
+import { DiscountsDialog } from "../features/repair/components/DiscountsDialog";
 import { useAppConfigStore } from "../stores/app-config";
+import { useAuthStore } from "../stores/auth";
 
 function assetTitle(asset?: JobTicket["asset"]): string {
     if (!asset) return "Unknown asset";
@@ -29,11 +31,14 @@ export default function JobTicketPage() {
     const navigate = useNavigate();
     const config = useAppConfigStore((s) => s.config);
     const currency = config?.currency_symbol ?? "";
+    const role = useAuthStore((s) => s.user?.role);
+    const isStaff = role === "owner" || role === "admin" || role === "advisor";
     const [ticket, setTicket] = useState<JobTicket | null>(null);
     const [error, setError] = useState("");
     const [estimateOpen, setEstimateOpen] = useState(false);
     const [approvalOpen, setApprovalOpen] = useState(false);
     const [assignOpen, setAssignOpen] = useState(false);
+    const [discountsOpen, setDiscountsOpen] = useState(false);
 
     const toggleItem = async (itemId: string, completed: boolean) => {
         try {
@@ -176,8 +181,14 @@ export default function JobTicketPage() {
                                                     <span>-{formatMoney(ticket.discount, currency)}</span>
                                                 </div>
                                             )}
+                                            {ticket.senior_discount > 0 && (
+                                                <div className="flex justify-between text-muted-foreground">
+                                                    <span>Senior/PWD Disc. (20%){ticket.senior_pwd_id ? ` · ${ticket.senior_pwd_id}` : ""}</span>
+                                                    <span>-{formatMoney(ticket.senior_discount, currency)}</span>
+                                                </div>
+                                            )}
                                             <div className="flex justify-between text-muted-foreground">
-                                                <span>Tax</span>
+                                                <span>{ticket.senior_pwd_type ? "Tax (VAT-exempt)" : "Tax"}</span>
                                                 <span>{formatMoney(ticket.tax, currency)}</span>
                                             </div>
                                             <div className="flex justify-between font-semibold">
@@ -249,10 +260,21 @@ export default function JobTicketPage() {
                                     {ticket.receipt_number && (
                                         <div className="text-sm text-muted-foreground">Receipt {ticket.receipt_number}</div>
                                     )}
+                                    {(ticket.discount > 0 || ticket.senior_discount > 0) && (
+                                        <div className="text-xs text-muted-foreground">
+                                            {ticket.discount > 0 && `Discount -${formatMoney(ticket.discount, currency)}`}
+                                            {ticket.senior_discount > 0 && `${ticket.discount > 0 ? " · " : ""}Senior/PWD -${formatMoney(ticket.senior_discount, currency)}`}
+                                        </div>
+                                    )}
                                     <div className="flex gap-2">
                                         <Button variant="outline" className="flex-1" onClick={() => { void generateInvoicePdf(ticket, config).catch(console.error); }}>
                                             <FileText className="h-4 w-4 mr-1" /> Invoice PDF
                                         </Button>
+                                        {ticket.status === "done" && isStaff && (
+                                            <Button variant="outline" className="flex-1" onClick={() => setDiscountsOpen(true)}>
+                                                Discounts
+                                            </Button>
+                                        )}
                                         {ticket.status === "done" && (
                                             <Button className="flex-1" onClick={markPaid}>
                                                 Mark as Paid
@@ -267,6 +289,12 @@ export default function JobTicketPage() {
                             ticket={ticket}
                             open={estimateOpen}
                             onOpenChange={setEstimateOpen}
+                            onSaved={setTicket}
+                        />
+                        <DiscountsDialog
+                            ticket={ticket}
+                            open={discountsOpen}
+                            onOpenChange={setDiscountsOpen}
                             onSaved={setTicket}
                         />
                         <ApprovalDialog

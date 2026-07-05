@@ -30,9 +30,12 @@ export interface JobTicket {
     receipt_number: string | null;
     job_order_no: string | null;
     terms: string | null;
+    senior_pwd_type: string | null; // 'senior' | 'pwd' | null
+    senior_pwd_id: string | null;
     subtotal: number;
     tax: number;
-    discount: number;
+    discount: number; // manual
+    senior_discount: number; // computed 20%
     total: number;
     created_at: number;
     updated_at: number;
@@ -62,11 +65,27 @@ export interface EstimateItemInput {
     inventory_item_id?: string | null;
 }
 
+export type SeniorPwdType = "senior" | "pwd" | null;
+
 export function saveEstimate(
     orderId: string,
-    input: { items: EstimateItemInput[]; discount: number }
+    input: {
+        items: EstimateItemInput[];
+        discount: number;
+        senior_pwd_type?: SeniorPwdType;
+        senior_pwd_id?: string | null;
+    }
 ): Promise<JobTicket> {
     return api.put<JobTicket>(`/api/orders/${orderId}/estimate`, input);
+}
+
+// Set manual discount + senior/PWD status on an order (admin/advisor); recomputes totals.
+// Usable at the estimate stage or the final/billing stage.
+export function setDiscounts(
+    orderId: string,
+    input: { discount: number; senior_pwd_type: SeniorPwdType; senior_pwd_id: string | null }
+): Promise<JobTicket> {
+    return api.post<JobTicket>(`/api/orders/${orderId}/discounts`, input);
 }
 
 export function approveOrder(

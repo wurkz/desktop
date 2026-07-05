@@ -153,9 +153,12 @@ export interface OrdersTable {
     inspection: Nullable<string>; // JSON: intake inspection checklist
     job_order_no: Nullable<string>; // shop's pre-printed paper serial (BIR job order)
     terms: Nullable<string>; // payment terms (e.g. "COD", "Net 15")
+    senior_pwd_type: Nullable<string>; // 'senior' | 'pwd' | null (20% + VAT-exempt)
+    senior_pwd_id: Nullable<string>; // OSCA / PWD ID number
     subtotal: number; // centavos
     tax: number; // centavos
-    discount: number; // centavos
+    discount: number; // centavos (manual)
+    senior_discount: number; // centavos (computed 20% when senior/PWD)
     total: number; // centavos
     created_at: number;
     updated_at: number;

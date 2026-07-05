@@ -609,6 +609,21 @@ pub async fn create_inventory(
 
 // ---- Estimate ----
 
+// Shared money math. Senior/PWD (RA 9994 / RA 10754): the sale is VAT-exempt (tax = 0)
+// and gets a statutory 20% discount on the (VAT-exclusive) subtotal. Returns
+// (tax, senior_discount, total), all centavos.
+fn compute_totals(subtotal: i64, discount: i64, senior: bool, rate: f64) -> (i64, i64, i64) {
+    let tax = if senior { 0 } else { (subtotal as f64 * rate).round() as i64 };
+    let senior_discount = if senior { (subtotal as f64 * 0.20).round() as i64 } else { 0 };
+    let total = subtotal + tax - discount - senior_discount;
+    (tax, senior_discount, total)
+}
+
+// Normalize a senior/PWD type string to a valid value or None.
+fn senior_type(o: &Option<String>) -> Option<String> {
+    o.as_ref().map(|s| s.trim().to_lowercase()).filter(|s| s == "senior" || s == "pwd")
+}
+
 #[derive(Deserialize)]
 pub struct EstimateItem {
     #[serde(rename = "type")]
@@ -623,7 +638,9 @@ pub struct EstimateItem {
 #[derive(Deserialize)]
 pub struct SaveEstimateReq {
     items: Vec<EstimateItem>,
-    discount: i64, // centavos
+    discount: i64, // centavos (manual)
+    senior_pwd_type: Option<String>, // 'senior' | 'pwd' | null
+    senior_pwd_id: Option<String>,
 }
 
 /// PUT /api/orders/:id/estimate — replace line items, recompute totals (tax from app_config),
@@ -668,16 +685,21 @@ pub async fn save_estimate(
     }
 
     let rate = tax_rate(&state).await;
-    let tax = (subtotal as f64 * rate).round() as i64;
-    let total = subtotal + tax - req.discount;
+    let stype = senior_type(&req.senior_pwd_type);
+    let (tax, senior_discount, total) = compute_totals(subtotal, req.discount, stype.is_some(), rate);
+    let senior_id = req.senior_pwd_id.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     let now = now_ms();
 
     sqlx::query(
-        "UPDATE orders SET subtotal = ?, tax = ?, discount = ?, total = ?, status = 'estimate', updated_at = ? WHERE id = ?",
+        "UPDATE orders SET subtotal = ?, tax = ?, discount = ?, senior_discount = ?, \
+         senior_pwd_type = ?, senior_pwd_id = ?, total = ?, status = 'estimate', updated_at = ? WHERE id = ?",
     )
     .bind(subtotal)
     .bind(tax)
     .bind(req.discount)
+    .bind(senior_discount)
+    .bind(&stype)
+    .bind(&senior_id)
     .bind(total)
     .bind(now)
     .bind(&id)
@@ -686,6 +708,54 @@ pub async fn save_estimate(
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
+}
+
+#[derive(Deserialize)]
+pub struct SetDiscountsReq {
+    discount: i64, // centavos (manual)
+    senior_pwd_type: Option<String>,
+    senior_pwd_id: Option<String>,
+}
+
+/// POST /api/orders/:id/discounts — set the manual discount + senior/PWD status on an order
+/// and recompute totals from its existing subtotal (line items unchanged). Admin/advisor only;
+/// usable at the estimate stage or the final/billing stage.
+pub async fn set_discounts(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<SetDiscountsReq>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    require_staff(&state, &headers).map_err(|s| (s, "staff only".to_string()))?;
+    let subtotal: Option<i64> = sqlx::query_scalar("SELECT subtotal FROM orders WHERE id = ? LIMIT 1")
+        .bind(&id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+    let subtotal = subtotal.ok_or((StatusCode::NOT_FOUND, "order not found".to_string()))?;
+
+    let rate = tax_rate(&state).await;
+    let stype = senior_type(&req.senior_pwd_type);
+    let (tax, senior_discount, total) = compute_totals(subtotal, req.discount, stype.is_some(), rate);
+    let senior_id = req.senior_pwd_id.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+
+    sqlx::query(
+        "UPDATE orders SET discount = ?, senior_discount = ?, senior_pwd_type = ?, senior_pwd_id = ?, \
+         tax = ?, total = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(req.discount)
+    .bind(senior_discount)
+    .bind(&stype)
+    .bind(&senior_id)
+    .bind(tax)
+    .bind(total)
+    .bind(now_ms())
+    .bind(&id)
+    .execute(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "update failed".to_string()))?;
+
+    order_detail(&state, &id).await.ok_or((StatusCode::NOT_FOUND, "not found".to_string())).map(Json)
 }
 
 // ---- Licensing ----

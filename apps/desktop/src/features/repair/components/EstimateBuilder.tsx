@@ -52,6 +52,8 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
 
     const [rows, setRows] = useState<Row[]>([]);
     const [discount, setDiscount] = useState("");
+    const [seniorType, setSeniorType] = useState<"" | "senior" | "pwd">("");
+    const [seniorId, setSeniorId] = useState("");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
@@ -69,6 +71,8 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                 )
             );
             setDiscount(ticket.discount ? String(fromCentavos(ticket.discount)) : "");
+            setSeniorType((ticket.senior_pwd_type as "senior" | "pwd" | null) ?? "");
+            setSeniorId(ticket.senior_pwd_id ?? "");
             setError("");
         }
     }, [open, ticket]);
@@ -85,8 +89,10 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
     const lineCentavos = (r: Row) => Math.round((parseFloat(r.quantity) || 0) * toCentavos(parseFloat(r.unitPrice) || 0));
     const subtotal = rows.reduce((s, r) => s + lineCentavos(r), 0);
     const discountC = toCentavos(parseFloat(discount) || 0);
-    const tax = Math.round(subtotal * taxRate);
-    const total = subtotal + tax - discountC;
+    const isSenior = seniorType !== "";
+    const seniorDiscC = isSenior ? Math.round(subtotal * 0.2) : 0; // 20% statutory
+    const tax = isSenior ? 0 : Math.round(subtotal * taxRate); // VAT-exempt when senior/PWD
+    const total = subtotal + tax - discountC - seniorDiscC;
 
     const submit = async () => {
         const items = rows
@@ -106,7 +112,12 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
         setSaving(true);
         setError("");
         try {
-            const updated = await saveEstimate(ticket.id, { items, discount: discountC });
+            const updated = await saveEstimate(ticket.id, {
+                items,
+                discount: discountC,
+                senior_pwd_type: seniorType || null,
+                senior_pwd_id: seniorId.trim() || null,
+            });
             onSaved(updated);
             onOpenChange(false);
         } catch (e) {
@@ -184,8 +195,37 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                             <span className="text-muted-foreground">Discount</span>
                             <Input className="w-28 h-8" value={discount} onChange={(e) => setDiscount(e.target.value)} inputMode="decimal" placeholder="0" />
                         </div>
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="text-muted-foreground">Senior / PWD</span>
+                            <div className="flex gap-2">
+                                <select
+                                    className="h-8 rounded-md border bg-background px-2 text-sm"
+                                    value={seniorType}
+                                    onChange={(e) => setSeniorType(e.target.value as "" | "senior" | "pwd")}
+                                >
+                                    <option value="">None</option>
+                                    <option value="senior">Senior</option>
+                                    <option value="pwd">PWD</option>
+                                </select>
+                                <Input
+                                    className="w-32 h-8"
+                                    value={seniorId}
+                                    onChange={(e) => setSeniorId(e.target.value)}
+                                    placeholder="OSCA/PWD ID"
+                                    disabled={!isSenior}
+                                />
+                            </div>
+                        </div>
+                        {isSenior && (
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Senior/PWD Disc. (20%)</span>
+                                <span>-{formatMoney(seniorDiscC, currency)}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between">
-                            <span className="text-muted-foreground">Tax ({(taxRate * 100).toFixed(0)}%)</span>
+                            <span className="text-muted-foreground">
+                                {isSenior ? "Tax (VAT-exempt)" : `Tax (${(taxRate * 100).toFixed(0)}%)`}
+                            </span>
                             <span>{formatMoney(tax, currency)}</span>
                         </div>
                         <div className="flex justify-between font-semibold text-base pt-1">
