@@ -28,7 +28,7 @@
 | Phase | Backlog | Completed | Progress |
 |---|---|---|---|
 | Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~99% (12 of 13 ✅ — only online-enforcement remains, deferred fast-follow) |
-| Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~80% (settings + **data-driven asset types** done; 4 items remaining, mostly deferred: schema split, module registry, user-mgmt UI, hardware IO) |
+| Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~80% (settings + **data-driven asset types** done; remaining: **BACK-1-007 demo seeder/reset** (next up), + deferred: schema split, module registry, user-mgmt UI, hardware IO) |
 | Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ✅ **100%** (core loop, asset detail/edit/soft-delete, lightweight bookings, and job-ticket photos + note threads) |
 | Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | ~15% (inventory search/create + part-link done via estimate; mgmt page + stock deduction remain) |
 | Phase 4 — Cloud Link | [backlog](./phase-4-backlog.md) | [completed](./phase-4-completed.md) | ~10% (8 items remaining) |
