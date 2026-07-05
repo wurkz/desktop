@@ -88,31 +88,54 @@ Plan mentions Hardware IO (Printers, Scanners) as a Core Kernel responsibility. 
 
 ---
 
-## BACK-1-006 · Shop Asset-Type Configuration
+## BACK-1-006 · Shop Asset-Type Configuration (data-driven types + fields)
 
-**Priority:** 🟡 Medium
-**Area:** setup wizard (`pages/setup.tsx`), settings (`pages/settings.tsx`), asset create form, `app_config`
-**Origin:** Owner insight (2026-07-05, while doing BACK-2-003)
+**Priority:** 🟡 Medium (post-v1)
+**Area:** new `asset_types` table + Rust endpoints, setup wizard (`pages/setup.tsx`), settings
+(`pages/settings.tsx`), asset create/detail/edit forms
+**Origin:** Owner insight (2026-07-05, while doing BACK-2-003); design chat finalized 2026-07-05
+**Traces to:** the CLAUDE.md core rule (don't hardcode car/mechanic; keep the core domain-agnostic)
 
 **Description:**
-Asset **type** should not be a per-asset choice — it is a property of the *shop*. A car-aircon repair shop
-deals with vehicles for the app's entire lifetime; a phone-repair shop deals with gadgets. Today the asset
-create form always offers all three types (vehicle/gadget/appliance), which is noise for a single-domain shop
-and lets staff mis-file assets. The shop's asset type(s) should be chosen **once during onboarding** (and
-adjustable in **Settings**), then the asset create form should default to / be constrained to the shop's
-configured type(s). Per-asset type remains immutable (already enforced in BACK-2-C011).
+Asset **type** is a property of the *shop*, not each asset. Today `AssetCreateForm.tsx` hardcodes three types
+(vehicle/gadget/appliance) and their spec fields (`SPEC_FIELDS`/`SPEC_LABELS`) — the only domain hardcoding in
+the app (the DB is already agnostic: `assets.type` is free TEXT, `assets.specs` is free JSON). This item makes
+asset types **data-driven**: each shop defines one or more asset types, each with its own ordered list of
+fields. The three current types ship as **templates** (seed data) so the target market (cars/gadgets/
+appliances) gets a zero-typing setup, while any shop can add/edit types and fields.
+
+**Design (decided in chat):**
+- **Engine = data-driven (Option B).** Types + fields are stored, not hardcoded.
+- **Field definition:** `{ key, label, kind, required }` where `kind` ∈ `text | number`; `required` is
+  optional. (Dropdowns/date kinds are a deliberate later extension — text is a clean superset, migrates
+  forward with no data loss.)
+- **Templates on install:** Vehicle / Gadget / Appliance, pre-loaded with today's standard fields. The shop
+  ticks which to add during onboarding (or starts custom).
+- **Multiple types per shop** are allowed.
+- **Per-type "Show when creating a ticket" toggle** (settings): a type always continues to exist (its assets +
+  history stay intact) but can be hidden from the new-asset/new-ticket picker to avoid clutter. This is the
+  owner's chosen mechanism instead of hard delete/disable.
+- **Create form** shows only types toggled on: exactly one → no picker (fields render directly); multiple →
+  picker limited to the on types. Detail/edit forms render field labels from the type's field defs (retire the
+  hardcoded `SPEC_LABELS` fallback map).
+- **D24:** toggling a type off (or removing it) NEVER hides existing assets or their history — only new-asset
+  creation is affected.
 
 **Acceptance Criteria:**
-- [ ] `app_config` stores the shop's enabled asset type(s) (e.g. an `asset_types` JSON/text column; likely a
-      single primary type for most shops, but allow multiple)
-- [ ] Setup wizard step: choose the shop's asset type(s) on first run (default sensible if skipped)
-- [ ] Settings page: edit the enabled asset type(s) (admin/owner only, consistent with BACK-1-C004)
-- [ ] Asset create form only offers the shop's enabled type(s); if exactly one, the type selector is hidden and
-      that type is pre-selected
-- [ ] Existing assets of a now-disabled type still display/search correctly (don't hide historical data — D24)
+- [ ] `asset_types` table: `id, tenant_id, name, icon, fields (JSON [{key,label,kind,required}]), show_on_create
+      (INTEGER), sort_order, created_at, updated_at`. Migration seeds the 3 templates for new + existing installs.
+- [ ] Rust CRUD endpoints for asset types (list + create/update; admin-only for writes, mirroring
+      `update_config`/`require_admin`).
+- [ ] Setup wizard step "What do you service?" — tick starter templates (or add a custom type) → seeds rows.
+- [ ] Settings "Asset Types" section (admin/owner only): rename type, add/remove/reorder fields (label + kind +
+      required), and the per-type **Show when creating a ticket** toggle.
+- [ ] Asset create form is driven by the shop's on types (one → no picker; many → limited picker); fields come
+      from the type's field defs. `number` fields use numeric input; `required` fields block save when empty.
+- [ ] Asset detail + edit render labels/fields from the type definition (no hardcoded `SPEC_FIELDS`/
+      `SPEC_LABELS`).
+- [ ] Existing assets of a hidden/removed type still display + search correctly (D24).
 
-**Open questions (discuss before build):**
-- Single primary type vs. multi-select? (Owner leaned "usually fixed to one" — a car shop is cars for life.)
-- Should disabling a type that has existing assets be blocked or just hidden from new-asset creation?
+**Deferred to a later extension (noted, not in this item):** dropdown/select and date field kinds; per-type
+icon picker beyond a small preset.
 
 ---
