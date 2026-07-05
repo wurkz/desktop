@@ -479,6 +479,12 @@ Discounts editor applies PWD and the billing card reflects it; PDF generates. Ze
 **Note:** 20% is hardcoded (statutory). This is a discount + VAT-exemption on the working document — not a claim
 of BIR compliance (see BACK-2-C014).
 
+**Update 2026-07-05 — holder name.** Added `orders.senior_pwd_name` (migration 0010): the discount holder's
+name, recorded alongside the OSCA/PWD ID (the holder can differ from the paying customer; BIR records need
+name + ID). A "Holder name" input appears in both the Estimate builder and the Discounts editor when a
+senior/PWD type is selected, and the name prints on the OSCA/PWD line of the document. Verified: name persists
+via the discounts endpoint and rehydrates in the editor UI (Playwright), zero console errors.
+
 **Key files:**
 - `packages/db/migrations/sqlite/0009_senior_pwd_discount.sql`, `packages/db/src/types.ts`
 - `apps/desktop/src-tauri/src/api_data.rs` (`compute_totals`, `save_estimate`, `set_discounts`), `.../server.rs`

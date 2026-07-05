@@ -32,6 +32,7 @@ export interface JobTicket {
     terms: string | null;
     senior_pwd_type: string | null; // 'senior' | 'pwd' | null
     senior_pwd_id: string | null;
+    senior_pwd_name: string | null;
     subtotal: number;
     tax: number;
     discount: number; // manual
@@ -74,6 +75,7 @@ export function saveEstimate(
         discount: number;
         senior_pwd_type?: SeniorPwdType;
         senior_pwd_id?: string | null;
+        senior_pwd_name?: string | null;
     }
 ): Promise<JobTicket> {
     return api.put<JobTicket>(`/api/orders/${orderId}/estimate`, input);
@@ -83,7 +85,12 @@ export function saveEstimate(
 // Usable at the estimate stage or the final/billing stage.
 export function setDiscounts(
     orderId: string,
-    input: { discount: number; senior_pwd_type: SeniorPwdType; senior_pwd_id: string | null }
+    input: {
+        discount: number;
+        senior_pwd_type: SeniorPwdType;
+        senior_pwd_id: string | null;
+        senior_pwd_name: string | null;
+    }
 ): Promise<JobTicket> {
     return api.post<JobTicket>(`/api/orders/${orderId}/discounts`, input);
 }
