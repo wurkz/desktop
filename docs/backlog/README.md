@@ -28,8 +28,8 @@
 | Phase | Backlog | Completed | Progress |
 |---|---|---|---|
 | Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~92% (11 of 13 ✅ — HTTP API/single-path done; remaining: logo upload, online-enforcement[deferred]) |
-| Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~75% (settings page done; 4 items remaining, mostly deferred) |
-| Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~85% (**full core loop intake→…→invoice→paid + asset detail/history working**; remaining: asset edit/soft-delete, bookings, photos) |
+| Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~70% (settings page done; 5 items remaining incl. new BACK-1-006 shop asset-type config; mostly deferred) |
+| Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~90% (**full core loop intake→…→invoice→paid + asset detail/edit/soft-delete working**; remaining: bookings, photos) |
 | Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | ~15% (inventory search/create + part-link done via estimate; mgmt page + stock deduction remain) |
 | Phase 4 — Cloud Link | [backlog](./phase-4-backlog.md) | [completed](./phase-4-completed.md) | ~10% (8 items remaining) |
 
@@ -73,7 +73,7 @@ starting the next. Items marked *(mod)* have changed scope vs their original bac
 ### Tier P2 — Ship polish
 23. ~~**BACK-0-011** — Real dashboard stats~~ ✅ **Done** (2026-07-04 — live /api/stats; no more fake numbers)
 24. ~~**BACK-1-004** — App config settings page~~ ✅ **Done** (2026-07-05 — full shop profile editable via `PUT /api/config`, admin-only; edits invoice header + tax rate live)
-25. **BACK-2-003** — Asset update & soft-delete
+25. ~~**BACK-2-003** — Asset update & soft-delete~~ ✅ **Done** (2026-07-05 — edit specs/owner (type fixed) + soft-delete via `PUT`/`DELETE /api/assets/:id`; delete blocked when open tickets exist)
 26. **BACK-0-013** — Shop logo upload *(needs Tauri fs; shows on invoices)*
 
 ### Deferred past v1 (explicitly cut — see v1-decisions.md)
@@ -121,6 +121,6 @@ Follow the **Critical Path to v1** above, top-down. The immediate next actions:
 
 > With the P0 foundation + the full core repair loop (through invoice→paid) + asset detail done, the
 > remaining v1 work is polish: **BACK-2-010** bookings, **BACK-2-011** photos,
-> **BACK-2-003** asset edit/soft-delete, **BACK-0-013** logo upload.
+> **BACK-0-013** logo upload. (New idea captured: **BACK-1-006** shop asset-type config — post-v1.)
 > Superseded the 2026-06-14 list (which started at `BACK-2-001`). Feature work now sits behind the
 > Phase 0 foundation per the v1 audit and decisions D1–D19.

@@ -6,22 +6,6 @@
 
 ---
 
-## BACK-2-003 · Asset Update & Soft-Delete
-
-**Priority:** Medium  
-**Area:** `packages/features/repair/src/dal/asset.repo.ts`  
-**Description:**  
-No update or delete operations exist in `AssetRepository`. Required for correcting data entry mistakes.
-
-**Acceptance Criteria:**
-- [ ] `AssetRepository.update(id, input)` method added
-- [ ] `AssetRepository.softDelete(id)` sets `deleted_at` timestamp
-- [ ] Soft-deleted assets are excluded from `search()` results by default
-- [ ] Edit button on Asset Detail view opens a pre-filled form
-- [ ] Delete requires confirmation dialog
-
----
-
 ## BACK-2-010 · Booking CRUD
 
 **Priority:** 🟢 Low  
