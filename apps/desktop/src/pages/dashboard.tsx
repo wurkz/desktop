@@ -5,7 +5,7 @@ import { Button, ThemeSwitcher } from "@zorviz/ui";
 import { useNavigate } from "react-router-dom";
 import { formatMoney } from "@zorviz/core";
 import { ServerStatus } from "../components/server-status";
-import { Wrench, Package, Settings, ChevronRight, Car, ClipboardList, TrendingUp, DatabaseBackup, Users } from "lucide-react";
+import { Wrench, Package, Settings, ChevronRight, Car, ClipboardList, TrendingUp, DatabaseBackup, Users, CalendarDays } from "lucide-react";
 import { BackupDialog } from "../features/backup/BackupDialog";
 import { api } from "../lib/api";
 
@@ -48,6 +48,15 @@ export default function DashboardPage() {
             href: "/jobs",
             color: "from-amber-500 to-amber-600",
         },
+        ...(user?.role === "admin" || user?.role === "owner" || user?.role === "advisor"
+            ? [{
+                title: "Bookings",
+                description: "Call-aheads & schedule",
+                icon: CalendarDays,
+                href: "/bookings",
+                color: "from-cyan-500 to-cyan-600",
+            }]
+            : []),
         ...(user?.role === "admin" || user?.role === "owner"
             ? [{
                 title: "Staff",

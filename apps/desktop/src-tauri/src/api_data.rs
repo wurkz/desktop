@@ -1013,6 +1013,15 @@ pub(crate) fn require_admin(state: &ApiState, headers: &HeaderMap) -> Result<(),
     }
 }
 
+// Front-desk staff: owner/admin/advisor (mechanics excluded). Used for bookings (D10/BACK-2-010).
+pub(crate) fn require_staff(state: &ApiState, headers: &HeaderMap) -> Result<(), StatusCode> {
+    match session_from_headers(state, headers) {
+        None => Err(StatusCode::UNAUTHORIZED),
+        Some(s) if s.role == "owner" || s.role == "admin" || s.role == "advisor" => Ok(()),
+        Some(_) => Err(StatusCode::FORBIDDEN),
+    }
+}
+
 #[derive(Deserialize)]
 pub struct CreateUserReq {
     name: String,

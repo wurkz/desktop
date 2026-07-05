@@ -31,9 +31,14 @@ interface Props {
     asset: AssetWithHistory | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    // Prefill the complaint (used when converting a booking — BACK-2-010).
+    initialComplaint?: string;
+    // Called after the ticket is created (before navigation), e.g. to mark the source
+    // booking completed.
+    onCreated?: (ticketId: string) => void | Promise<void>;
 }
 
-export function IntakeForm({ asset, open, onOpenChange }: Props) {
+export function IntakeForm({ asset, open, onOpenChange, initialComplaint, onCreated }: Props) {
     const navigate = useNavigate();
     const [complaint, setComplaint] = useState("");
     const [items, setItems] = useState<InspectionItem[]>([]);
@@ -42,11 +47,11 @@ export function IntakeForm({ asset, open, onOpenChange }: Props) {
 
     useEffect(() => {
         if (open) {
-            setComplaint("");
+            setComplaint(initialComplaint ?? "");
             setItems(CHECKLIST.map((item) => ({ item, status: "na", note: "" })));
             setError("");
         }
-    }, [open]);
+    }, [open, initialComplaint]);
 
     const setItem = (i: number, patch: Partial<InspectionItem>) =>
         setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
@@ -65,6 +70,7 @@ export function IntakeForm({ asset, open, onOpenChange }: Props) {
                 customer_complaint: complaint.trim(),
                 inspection: items,
             });
+            if (onCreated) await onCreated(ticket.id);
             onOpenChange(false);
             navigate(`/repair/ticket/${ticket.id}`);
         } catch (e) {

@@ -8,6 +8,7 @@ pub mod api_data;
 pub mod asset_types;
 pub mod auth;
 pub mod backup;
+pub mod bookings;
 pub mod db;
 pub mod license;
 pub mod server;

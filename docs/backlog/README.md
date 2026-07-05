@@ -29,7 +29,7 @@
 |---|---|---|---|
 | Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~92% (11 of 13 ✅ — HTTP API/single-path done; remaining: logo upload, online-enforcement[deferred]) |
 | Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~80% (settings + **data-driven asset types** done; 4 items remaining, mostly deferred: schema split, module registry, user-mgmt UI, hardware IO) |
-| Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~90% (**full core loop intake→…→invoice→paid + asset detail/edit/soft-delete working**; remaining: bookings, photos) |
+| Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~95% (**core loop + asset detail/edit/soft-delete + lightweight bookings working**; remaining: photos) |
 | Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | ~15% (inventory search/create + part-link done via estimate; mgmt page + stock deduction remain) |
 | Phase 4 — Cloud Link | [backlog](./phase-4-backlog.md) | [completed](./phase-4-completed.md) | ~10% (8 items remaining) |
 
@@ -66,7 +66,7 @@ starting the next. Items marked *(mod)* have changed scope vs their original bac
 17. ~~**BACK-2-008** — Mechanic assignment~~ ✅ **Done** (2026-07-04)
 18. ~~**BACK-2-007** — Mechanic "My Jobs" mobile view~~ ✅ **Done** (2026-07-04 — job board + checklist execution → done)
 19. ~~**BACK-2-009** — Completion & invoice~~ ✅ **Done** (2026-07-04 — PDF invoice + receipt + mark paid; **core loop complete**)
-20. **BACK-2-010** — Bookings *(mod: unified with walk-ins; converges at the same Create Job Ticket screen — D10)*
+20. ~~**BACK-2-010** — Bookings~~ ✅ **Done** (2026-07-05 — lightweight call-aheads; admin/advisor Convert → normal asset+ticket flow pre-filled — D10)
 21. ~~**BACK-0-007** — Minimal user management~~ ✅ **Done** (2026-07-04 — admin add/edit/deactivate staff, PIN reset, server-side hashing)
 22. ~~**BACK-0-008** — Backup & restore~~ ✅ **Done** (2026-07-04 — VACUUM INTO backups, auto+manual, staged restore, retention)
 
@@ -120,7 +120,7 @@ Follow the **Critical Path to v1** above, top-down. The immediate next actions:
 5. ~~`BACK-0-005` — Local HTTP API + LAN serving~~ ✅ **Done** (2026-07-05 — single path complete)
 
 > With the P0 foundation + the full core repair loop (through invoice→paid) + asset detail done, the
-> remaining v1 work is polish: **BACK-2-010** bookings, **BACK-2-011** photos,
-> **BACK-0-013** logo upload. (**BACK-1-006** data-driven shop asset types — ✅ done 2026-07-05.)
+> remaining v1 work is polish: **BACK-2-011** photos, **BACK-0-013** logo upload.
+> (Done 2026-07-05: **BACK-1-006** data-driven asset types, **BACK-2-010** lightweight bookings.)
 > Superseded the 2026-06-14 list (which started at `BACK-2-001`). Feature work now sits behind the
 > Phase 0 foundation per the v1 audit and decisions D1–D19.
