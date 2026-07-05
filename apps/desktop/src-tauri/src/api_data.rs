@@ -641,6 +641,7 @@ pub struct SaveEstimateReq {
     discount: i64, // centavos (manual)
     senior_pwd_type: Option<String>, // 'senior' | 'pwd' | null
     senior_pwd_id: Option<String>,
+    senior_pwd_name: Option<String>,
 }
 
 /// PUT /api/orders/:id/estimate — replace line items, recompute totals (tax from app_config),
@@ -687,19 +688,20 @@ pub async fn save_estimate(
     let rate = tax_rate(&state).await;
     let stype = senior_type(&req.senior_pwd_type);
     let (tax, senior_discount, total) = compute_totals(subtotal, req.discount, stype.is_some(), rate);
-    let senior_id = req.senior_pwd_id.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let nz = |o: &Option<String>| o.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     let now = now_ms();
 
     sqlx::query(
         "UPDATE orders SET subtotal = ?, tax = ?, discount = ?, senior_discount = ?, \
-         senior_pwd_type = ?, senior_pwd_id = ?, total = ?, status = 'estimate', updated_at = ? WHERE id = ?",
+         senior_pwd_type = ?, senior_pwd_id = ?, senior_pwd_name = ?, total = ?, status = 'estimate', updated_at = ? WHERE id = ?",
     )
     .bind(subtotal)
     .bind(tax)
     .bind(req.discount)
     .bind(senior_discount)
     .bind(&stype)
-    .bind(&senior_id)
+    .bind(nz(&req.senior_pwd_id))
+    .bind(nz(&req.senior_pwd_name))
     .bind(total)
     .bind(now)
     .bind(&id)
@@ -715,6 +717,7 @@ pub struct SetDiscountsReq {
     discount: i64, // centavos (manual)
     senior_pwd_type: Option<String>,
     senior_pwd_id: Option<String>,
+    senior_pwd_name: Option<String>,
 }
 
 /// POST /api/orders/:id/discounts — set the manual discount + senior/PWD status on an order
@@ -737,16 +740,17 @@ pub async fn set_discounts(
     let rate = tax_rate(&state).await;
     let stype = senior_type(&req.senior_pwd_type);
     let (tax, senior_discount, total) = compute_totals(subtotal, req.discount, stype.is_some(), rate);
-    let senior_id = req.senior_pwd_id.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let nz = |o: &Option<String>| o.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
 
     sqlx::query(
         "UPDATE orders SET discount = ?, senior_discount = ?, senior_pwd_type = ?, senior_pwd_id = ?, \
-         tax = ?, total = ?, updated_at = ? WHERE id = ?",
+         senior_pwd_name = ?, tax = ?, total = ?, updated_at = ? WHERE id = ?",
     )
     .bind(req.discount)
     .bind(senior_discount)
     .bind(&stype)
-    .bind(&senior_id)
+    .bind(nz(&req.senior_pwd_id))
+    .bind(nz(&req.senior_pwd_name))
     .bind(tax)
     .bind(total)
     .bind(now_ms())

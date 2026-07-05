@@ -96,7 +96,8 @@ export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | 
     y += 4.5;
     if (ticket.senior_pwd_type) {
         const lbl = ticket.senior_pwd_type === "pwd" ? "PWD" : "Senior Citizen";
-        doc.text(`OSCA/PWD ID No.: ${ticket.senior_pwd_id ?? "—"}  (${lbl})`, left, y);
+        const who = ticket.senior_pwd_name ? `${ticket.senior_pwd_name} · ` : "";
+        doc.text(`OSCA/PWD ID No.: ${who}${ticket.senior_pwd_id ?? "—"}  (${lbl})`, left, y);
         y += 4.5;
     }
     y += 5;

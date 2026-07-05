@@ -54,6 +54,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
     const [discount, setDiscount] = useState("");
     const [seniorType, setSeniorType] = useState<"" | "senior" | "pwd">("");
     const [seniorId, setSeniorId] = useState("");
+    const [seniorName, setSeniorName] = useState("");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
@@ -73,6 +74,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
             setDiscount(ticket.discount ? String(fromCentavos(ticket.discount)) : "");
             setSeniorType((ticket.senior_pwd_type as "senior" | "pwd" | null) ?? "");
             setSeniorId(ticket.senior_pwd_id ?? "");
+            setSeniorName(ticket.senior_pwd_name ?? "");
             setError("");
         }
     }, [open, ticket]);
@@ -117,6 +119,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                 discount: discountC,
                 senior_pwd_type: seniorType || null,
                 senior_pwd_id: seniorId.trim() || null,
+                senior_pwd_name: seniorName.trim() || null,
             });
             onSaved(updated);
             onOpenChange(false);
@@ -216,6 +219,12 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                                 />
                             </div>
                         </div>
+                        {isSenior && (
+                            <div className="flex justify-between items-center gap-2">
+                                <span className="text-muted-foreground">Holder name</span>
+                                <Input className="w-56 h-8" value={seniorName} onChange={(e) => setSeniorName(e.target.value)} placeholder="Senior/PWD full name" />
+                            </div>
+                        )}
                         {isSenior && (
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Senior/PWD Disc. (20%)</span>

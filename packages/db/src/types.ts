@@ -155,6 +155,7 @@ export interface OrdersTable {
     terms: Nullable<string>; // payment terms (e.g. "COD", "Net 15")
     senior_pwd_type: Nullable<string>; // 'senior' | 'pwd' | null (20% + VAT-exempt)
     senior_pwd_id: Nullable<string>; // OSCA / PWD ID number
+    senior_pwd_name: Nullable<string>; // discount holder's name (may differ from customer)
     subtotal: number; // centavos
     tax: number; // centavos
     discount: number; // centavos (manual)
