@@ -247,7 +247,7 @@ export default function JobTicketPage() {
                                         <div className="text-sm text-muted-foreground">Receipt {ticket.receipt_number}</div>
                                     )}
                                     <div className="flex gap-2">
-                                        <Button variant="outline" className="flex-1" onClick={() => generateInvoicePdf(ticket, config)}>
+                                        <Button variant="outline" className="flex-1" onClick={() => { void generateInvoicePdf(ticket, config).catch(console.error); }}>
                                             <FileText className="h-4 w-4 mr-1" /> Invoice PDF
                                         </Button>
                                         {ticket.status === "done" && (

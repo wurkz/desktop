@@ -27,7 +27,7 @@
 
 | Phase | Backlog | Completed | Progress |
 |---|---|---|---|
-| Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~92% (11 of 13 ✅ — HTTP API/single-path done; remaining: logo upload, online-enforcement[deferred]) |
+| Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~99% (12 of 13 ✅ — only online-enforcement remains, deferred fast-follow) |
 | Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~80% (settings + **data-driven asset types** done; 4 items remaining, mostly deferred: schema split, module registry, user-mgmt UI, hardware IO) |
 | Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~95% (**core loop + asset detail/edit/soft-delete + lightweight bookings working**; remaining: photos) |
 | Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | ~15% (inventory search/create + part-link done via estimate; mgmt page + stock deduction remain) |
@@ -74,7 +74,7 @@ starting the next. Items marked *(mod)* have changed scope vs their original bac
 23. ~~**BACK-0-011** — Real dashboard stats~~ ✅ **Done** (2026-07-04 — live /api/stats; no more fake numbers)
 24. ~~**BACK-1-004** — App config settings page~~ ✅ **Done** (2026-07-05 — full shop profile editable via `PUT /api/config`, admin-only; edits invoice header + tax rate live)
 25. ~~**BACK-2-003** — Asset update & soft-delete~~ ✅ **Done** (2026-07-05 — edit specs/owner (type fixed) + soft-delete via `PUT`/`DELETE /api/assets/:id`; delete blocked when open tickets exist)
-26. **BACK-0-013** — Shop logo upload *(needs Tauri fs; shows on invoices)*
+26. ~~**BACK-0-013** — Shop logo upload~~ ✅ **Done** (2026-07-05 — upload in Settings; shows on login/header + PDF invoice; over the HTTP API, no fs plugin)
 
 ### Deferred past v1 (explicitly cut — see v1-decisions.md)
 - **BACK-0-012** — Online enforcement layer / remote kill-switch *(fast-follow; needs the first backend — D20. Offline license BACK-0-006 ships in v1.)*
@@ -120,7 +120,7 @@ Follow the **Critical Path to v1** above, top-down. The immediate next actions:
 5. ~~`BACK-0-005` — Local HTTP API + LAN serving~~ ✅ **Done** (2026-07-05 — single path complete)
 
 > With the P0 foundation + the full core repair loop (through invoice→paid) + asset detail done, the
-> remaining v1 work is polish: **BACK-2-011** photos, **BACK-0-013** logo upload.
-> (Done 2026-07-05: **BACK-1-006** data-driven asset types, **BACK-2-010** lightweight bookings.)
+> remaining v1 work: **BACK-2-011** photos (needs a design chat). (Done 2026-07-05: **BACK-1-006** data-driven
+> asset types, **BACK-2-010** lightweight bookings, **BACK-0-013** shop logo upload.)
 > Superseded the 2026-06-14 list (which started at `BACK-2-001`). Feature work now sits behind the
 > Phase 0 foundation per the v1 audit and decisions D1–D19.

@@ -11,6 +11,7 @@ pub mod backup;
 pub mod bookings;
 pub mod db;
 pub mod license;
+pub mod media;
 pub mod server;
 
 use tauri::Manager;

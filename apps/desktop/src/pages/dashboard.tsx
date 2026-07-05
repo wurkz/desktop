@@ -8,6 +8,7 @@ import { ServerStatus } from "../components/server-status";
 import { Wrench, Package, Settings, ChevronRight, Car, ClipboardList, TrendingUp, DatabaseBackup, Users, CalendarDays } from "lucide-react";
 import { BackupDialog } from "../features/backup/BackupDialog";
 import { api } from "../lib/api";
+import { logoUrl } from "../lib/logo-api";
 
 interface DashboardStats {
     active_jobs: number;
@@ -87,6 +88,9 @@ export default function DashboardPage() {
         <div className="min-h-screen bg-background">
             <header className="border-b p-4 flex items-center justify-between bg-card/50 backdrop-blur-sm">
                 <div className="flex items-center gap-4">
+                    {config?.logo_path && (
+                        <img src={logoUrl(config.updated_at)} alt="" className="h-8 max-w-[120px] object-contain" />
+                    )}
                     <h1 className="font-bold text-xl bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">{config?.shop_name || "Zorviz"}</h1>
                     <ServerStatus />
                 </div>

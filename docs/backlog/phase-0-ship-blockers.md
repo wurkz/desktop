@@ -1,6 +1,6 @@
 # Phase 0 Backlog — v1 Ship Blockers & Foundation
 
-> **Status:** In progress — 11 of 13 complete (BACK-0-001, 002, 003, 004, 005, 006, 007, 008, 009, 010, 011 ✅; BACK-0-005 single-path now complete through Increment 4). Remaining: BACK-0-013 (logo upload), BACK-0-012 (online enforcement — deferred fast-follow).
+> **Status:** In progress — 12 of 13 complete (BACK-0-001, 002, 003, 004, 005, 006, 007, 008, 009, 010, 011, 013 ✅). Only remaining item is BACK-0-012 (online enforcement — deferred fast-follow, not a v1 blocker).
 > **Scope:** Foundation fixes and new cross-cutting infrastructure required before Zorviz can ship a
 > usable v1 to a real shop. Derived from the plan/design audit (2026-07-04) and owner decisions in
 > [`v1-decisions.md`](./v1-decisions.md).
@@ -35,20 +35,4 @@ requires the project's first backend; owner chose to keep it off the v1 critical
 
 ---
 
-## BACK-0-013 · Shop Logo Upload
-
-**Priority:** 🟢 P2 — cosmetic; split out of BACK-0-003 (setup wizard)
-**Area:** `apps/desktop/src-tauri/` (fs command), `apps/desktop/src/pages/setup.tsx` + settings
-**Traces to:** D14
-**Description:**
-The setup wizard collects all branding EXCEPT the logo image, which needs new Tauri filesystem plumbing
-to write the uploaded file to disk. Deferred from BACK-0-003 because it's cosmetic and mainly surfaces on
-PDF invoices (BACK-2-009). `app_config.logo_path` column already exists (currently written as `null`).
-
-**Acceptance Criteria:**
-- [ ] Rust command (or fs plugin) to save an uploaded image to `{data_dir}/media/` and return its path
-- [ ] Logo file picker in the setup wizard (and later the settings page) → saves path to `app_config.logo_path`
-- [ ] Logo displayed in the app header / login and on PDF invoices (when BACK-2-009 lands)
-- [ ] Replacing the logo removes/overwrites the old file
-
----
+_(BACK-0-013 · Shop Logo Upload — ✅ completed 2026-07-05, see `phase-0-completed.md`.)_

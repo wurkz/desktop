@@ -4,11 +4,13 @@ import { useAuthStore } from "../stores/auth";
 import { useAppConfigStore } from "../stores/app-config";
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@zorviz/ui";
 import { Wrench } from "lucide-react";
+import { logoUrl } from "../lib/logo-api";
 
 export default function LoginPage() {
     const navigate = useNavigate();
     const login = useAuthStore((state) => state.login);
-    const shopName = useAppConfigStore((s) => s.config?.shop_name);
+    const config = useAppConfigStore((s) => s.config);
+    const shopName = config?.shop_name;
 
     const [username, setUsername] = useState("");
     const [pin, setPin] = useState("");
@@ -34,9 +36,13 @@ export default function LoginPage() {
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
                     <div className="flex justify-center mb-4">
-                        <div className="p-3 bg-primary/10 rounded-full">
-                            <Wrench className="w-8 h-8 text-primary" />
-                        </div>
+                        {config?.logo_path ? (
+                            <img src={logoUrl(config.updated_at)} alt="Shop logo" className="h-16 max-w-[180px] object-contain" />
+                        ) : (
+                            <div className="p-3 bg-primary/10 rounded-full">
+                                <Wrench className="w-8 h-8 text-primary" />
+                            </div>
+                        )}
                     </div>
                     <CardTitle className="text-2xl text-center">{shopName || "Zorviz"}</CardTitle>
                     <CardDescription className="text-center">

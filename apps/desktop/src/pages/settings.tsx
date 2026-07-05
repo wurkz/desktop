@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent } from "@zorviz/ui";
-import { ArrowLeft, Store, Coins, Monitor, ListPlus, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Store, Coins, Monitor, ListPlus, Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import { useAuthStore } from "../stores/auth";
 import { useAppConfigStore } from "../stores/app-config";
 import { AssetTypesSettings } from "../features/repair/components/AssetTypesSettings";
+import { logoUrl, uploadLogo, deleteLogo } from "../lib/logo-api";
 
 type CustomField = { label: string; value: string };
 
@@ -35,6 +36,55 @@ export default function SettingsPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [saved, setSaved] = useState(false);
+
+    // Logo (BACK-0-013)
+    const fileInput = useRef<HTMLInputElement>(null);
+    const [logoBusy, setLogoBusy] = useState(false);
+    const [logoErr, setLogoErr] = useState("");
+
+    const onLogoPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = ""; // allow re-picking the same file
+        if (!file) return;
+        setLogoErr("");
+        if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+            setLogoErr("Use a PNG, JPG, WEBP or GIF image.");
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            setLogoErr("Image too large (max 2 MB).");
+            return;
+        }
+        const ext = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
+        setLogoBusy(true);
+        try {
+            const dataUrl: string = await new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result as string);
+                r.onerror = () => reject(new Error("read failed"));
+                r.readAsDataURL(file);
+            });
+            await uploadLogo(dataUrl, ext);
+            await fetchConfig();
+        } catch (err) {
+            setLogoErr(err instanceof Error ? err.message : "Upload failed.");
+        } finally {
+            setLogoBusy(false);
+        }
+    };
+
+    const onLogoRemove = async () => {
+        setLogoBusy(true);
+        setLogoErr("");
+        try {
+            await deleteLogo();
+            await fetchConfig();
+        } catch (err) {
+            setLogoErr(err instanceof Error ? err.message : "Remove failed.");
+        } finally {
+            setLogoBusy(false);
+        }
+    };
 
     // Ensure we have config (e.g. hard refresh into /settings), then hydrate the form.
     useEffect(() => {
@@ -135,6 +185,41 @@ export default function SettingsPage() {
                         Only an admin can change settings. These values are read-only for your role.
                     </p>
                 )}
+
+                <Card>
+                    <CardHeader className="flex-row items-center gap-2 space-y-0">
+                        <ImageIcon className="w-5 h-5 text-primary" />
+                        <CardTitle className="text-base">Logo</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <div className="flex items-center gap-4">
+                            <div className="w-20 h-20 rounded-md border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+                                {config?.logo_path ? (
+                                    <img src={logoUrl(config.updated_at)} alt="Shop logo" className="max-w-full max-h-full object-contain" />
+                                ) : (
+                                    <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                                )}
+                            </div>
+                            {!ro && (
+                                <div className="space-y-2">
+                                    <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={onLogoPicked} />
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" disabled={logoBusy} onClick={() => fileInput.current?.click()}>
+                                            {logoBusy ? "Uploading…" : config?.logo_path ? "Replace" : "Upload"}
+                                        </Button>
+                                        {config?.logo_path && (
+                                            <Button variant="outline" size="sm" disabled={logoBusy} onClick={onLogoRemove}>
+                                                Remove
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">PNG/JPG/WEBP, max 2 MB. Shown on invoices & login.</p>
+                                </div>
+                            )}
+                        </div>
+                        {logoErr && <p className="text-sm text-destructive">{logoErr}</p>}
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader className="flex-row items-center gap-2 space-y-0">

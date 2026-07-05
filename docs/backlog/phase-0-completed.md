@@ -391,3 +391,41 @@ production-update safety fix, not cosmetic.
 - `.gitattributes` (migration line-ending pin)
 
 ---
+
+## ✅ BACK-0-C013 · Shop Logo Upload
+
+**Completed:** 2026-07-05
+**Original Backlog ID:** BACK-0-013
+**Traces to:** D14
+
+**What was implemented (over the single-path HTTP API, no Tauri fs plugin needed):**
+- Rust `media.rs`: `POST /api/logo` (admin) accepts a base64 image (raw or `data:` URL) + ext, validates
+  type (png/jpg/webp/gif) and size (≤2 MB), writes `{data_dir}/media/logo.<ext>`, removes any prior
+  `logo.*` (so replacing overwrites even across extensions), and sets `app_config.logo_path`. `DELETE
+  /api/logo` (admin) removes the file + nulls the path. `GET /api/logo` (**public** — the login screen shows
+  it pre-auth) streams the bytes with the right content-type, 404 when none.
+- **Settings "Logo" card** (admin): preview + Upload/Replace/Remove; client reads the file as a data URL,
+  validates type/size, posts it, then refreshes config (cache-busted preview via `?v=updated_at`).
+- **Display:** logo shown on the login screen and the dashboard header (falls back to the wrench icon / shop
+  name when unset), and **embedded in the PDF invoice** (jsPDF `addImage`, top-left, header text shifts right;
+  `generateInvoicePdf` is now async and fetches the logo as a data URL — PNG/JPEG embedded, others skipped).
+- `API_BASE` exported from `api.ts`; new `logo-api.ts` (`uploadLogo`/`deleteLogo`/`logoUrl`/`fetchLogoDataUrl`).
+
+**⚠️ Deviation from the original spec:** implemented in **Settings** (admin), **not** the setup wizard. The
+wizard step was skipped to avoid a pre-auth upload path (no user/session exists mid-wizard); a shop sets its
+logo right after setup in Settings. Adding it to onboarding later is a small follow-up. `app_config.logo_path`
+stores a relative path (`media/logo.<ext>`); the browser always fetches via `GET /api/logo`, not the raw path.
+Note: logos live under `{data_dir}/media` and are **not** included in the SQLite `VACUUM INTO` backup
+(BACK-0-C008) — a known limitation.
+
+**Verification:** builds clean; Rust recompiled in dev. curl — 404 before upload, upload → `media/logo.png`,
+`GET` 200 `image/png`, config `logo_path` set, bad ext 400, **mechanic 403**, delete → 200 → `GET` 404 + media
+dir emptied. Playwright — Settings upload → preview appears → dashboard header shows it → login screen shows it
+→ Remove falls back to placeholder. Zero console errors.
+
+**Key files:**
+- `apps/desktop/src-tauri/src/media.rs` (new), `.../server.rs` (routes), `.../lib.rs` (module)
+- `apps/desktop/src/lib/logo-api.ts` (new), `apps/desktop/src/lib/api.ts` (`API_BASE`)
+- `apps/desktop/src/pages/{settings,login,dashboard,job-ticket}.tsx`, `apps/desktop/src/lib/invoice-pdf.ts`
+
+---

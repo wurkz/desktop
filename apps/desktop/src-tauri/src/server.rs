@@ -19,6 +19,7 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use crate::api_data;
 use crate::asset_types;
 use crate::bookings;
+use crate::media;
 use crate::auth::{self, ApiState, AuthState};
 
 const PORT: u16 = 3030;
@@ -121,6 +122,10 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
             get(bookings::list_bookings).post(bookings::create_booking),
         )
         .route("/api/bookings/:id/status", post(bookings::set_booking_status))
+        .route(
+            "/api/logo",
+            get(media::get_logo).post(media::upload_logo).delete(media::delete_logo),
+        )
         .route(
             "/api/assets",
             get(api_data::search_assets).post(api_data::create_asset),

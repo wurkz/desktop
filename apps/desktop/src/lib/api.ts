@@ -3,7 +3,7 @@
 // over LAN to a phone/tablet it is same-origin, so the base URL is empty.
 
 const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-const API_BASE = isTauri ? "http://localhost:3030" : "";
+export const API_BASE = isTauri ? "http://localhost:3030" : "";
 
 export class ApiError extends Error {
     status: number;

@@ -2,19 +2,39 @@ import { jsPDF } from "jspdf";
 import { formatMoney } from "@zorviz/core";
 import type { AppConfig } from "@zorviz/db";
 import type { JobTicket } from "./orders-api";
+import { fetchLogoDataUrl } from "./logo-api";
 
 // Generate + download a PDF invoice from a ticket (D9: PDF export, no direct print).
-export function generateInvoicePdf(ticket: JobTicket, config: AppConfig | null) {
+export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | null) {
     const currency = config?.currency_symbol ?? "";
     const doc = new jsPDF();
     const left = 15;
     const right = 195;
     let y = 18;
 
+    // Optional logo (top-left); shop text shifts right when present.
+    let headerX = left;
+    if (config?.logo_path) {
+        const logo = await fetchLogoDataUrl();
+        const mime = logo ? logo.slice(5, logo.indexOf(";")) : "";
+        const fmt = mime === "image/jpeg" ? "JPEG" : mime === "image/png" ? "PNG" : null;
+        if (logo && fmt) {
+            try {
+                const props = doc.getImageProperties(logo);
+                const max = 22;
+                const ratio = props.width / props.height;
+                const w = ratio >= 1 ? max : max * ratio;
+                const h = ratio >= 1 ? max / ratio : max;
+                doc.addImage(logo, fmt, left, 12, w, h);
+                headerX = left + max + 4;
+            } catch { /* ignore bad image */ }
+        }
+    }
+
     // Shop header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
-    doc.text(config?.shop_name ?? "Invoice", left, y);
+    doc.text(config?.shop_name ?? "Invoice", headerX, y);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     y += 6;
@@ -30,7 +50,7 @@ export function generateInvoicePdf(ticket: JobTicket, config: AppConfig | null) 
             for (const [k, v] of Object.entries(cf)) headerLines.push(`${k}: ${v}`);
         } catch { /* ignore malformed custom fields */ }
     }
-    headerLines.forEach((line) => { doc.text(line, left, y); y += 4.5; });
+    headerLines.forEach((line) => { doc.text(line, headerX, y); y += 4.5; });
 
     // Invoice meta (right aligned)
     doc.setFont("helvetica", "bold");
