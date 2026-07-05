@@ -67,11 +67,10 @@ export default function DashboardPage() {
         },
         {
             title: "Settings",
-            description: "Configure app preferences",
+            description: "Shop profile, currency & tax",
             icon: Settings,
             href: "/settings",
             color: "from-slate-500 to-slate-600",
-            disabled: true,
         },
     ];
 

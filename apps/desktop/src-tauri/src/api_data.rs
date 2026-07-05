@@ -681,6 +681,67 @@ pub async fn setup(
 }
 
 #[derive(Deserialize)]
+pub struct UpdateConfigReq {
+    shop_name: String,
+    device_name: String,
+    currency_symbol: String,
+    locale: Option<String>,
+    tax_rate: Option<f64>,
+    address: Option<String>,
+    contact_phone: Option<String>,
+    contact_email: Option<String>,
+    tax_registration_id: Option<String>,
+    custom_fields: Option<Value>,
+}
+
+/// PUT /api/config — edit the shop profile (admin/owner only). Never touches
+/// identity columns (id/tenant_id/branch_id) or auth. Returns the updated config.
+pub async fn update_config(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Json(req): Json<UpdateConfigReq>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    require_admin(&state, &headers).map_err(|s| (s, "admin only".to_string()))?;
+    if req.shop_name.trim().is_empty() || req.currency_symbol.trim().is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "shop name and currency are required".to_string()));
+    }
+    if req.device_name.trim().is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "device name is required".to_string()));
+    }
+    let custom_fields = req.custom_fields.map(|v| v.to_string());
+    let now = now_ms();
+    let result = sqlx::query(
+        "UPDATE app_config SET shop_name = ?, device_name = ?, currency_symbol = ?, locale = ?, \
+         tax_rate = ?, address = ?, contact_phone = ?, contact_email = ?, tax_registration_id = ?, \
+         custom_fields = ?, updated_at = ? WHERE id = 'default'",
+    )
+    .bind(req.shop_name.trim())
+    .bind(req.device_name.trim())
+    .bind(req.currency_symbol.trim())
+    .bind(req.locale.as_deref().unwrap_or("en-US"))
+    .bind(req.tax_rate)
+    .bind(&req.address)
+    .bind(&req.contact_phone)
+    .bind(&req.contact_email)
+    .bind(&req.tax_registration_id)
+    .bind(&custom_fields)
+    .bind(now)
+    .execute(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "config update failed".to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err((StatusCode::NOT_FOUND, "app not set up".to_string()));
+    }
+
+    let row = sqlx::query("SELECT * FROM app_config WHERE id = 'default' LIMIT 1")
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "config reload failed".to_string()))?;
+    Ok(Json(Value::Object(row_to_json(&row))))
+}
+
+#[derive(Deserialize)]
 pub struct LoadLicenseReq {
     content: String,
 }

@@ -168,3 +168,43 @@
 - `packages/db/src/seed.ts`
 
 ---
+
+## ✅ BACK-1-C004 · App Config Settings Page
+
+**Completed:** 2026-07-05
+**Original Backlog ID:** BACK-1-004
+
+**What was implemented:**
+- Rust `PUT /api/config` (`api_data::update_config`) — **admin/owner only** (`require_admin`, 403 for other
+  roles, 401 without a session). Updates the `app_config` `default` row and returns the reloaded config. Never
+  touches identity columns (`id`/`tenant_id`/`branch_id`), the logo, or auth. Validates that shop name,
+  currency, and device name are non-empty (400 otherwise); 404 if the app isn't set up yet.
+- `/settings` page (`pages/settings.tsx`) — grouped cards: **Shop Details** (name, address, phone, email, tax
+  reg ID), **Currency & Tax** (symbol, locale, tax rate entered as a %, stored as a fraction), **This Device**
+  (device name), and **Custom Fields** (dynamic label/value rows, same JSON `{label:value}` shape the invoice
+  reads). Hydrates from the app-config store; shows a "Settings saved." confirmation.
+- **Access model (owner decision):** admin/owner can edit; other roles see a read-only notice with all inputs
+  disabled and no Save button.
+- `app-config` store gained an `updateConfig(input)` action that PUTs and refreshes the global config, so the
+  dashboard header shop name and invoice data update live after a save.
+- Dashboard Settings card **un-disabled** ("Coming Soon" removed) → routes to `/settings`.
+
+**Scope note (expanded beyond the original ticket, per owner decision):** the ticket asked only for Device
+Name / Currency / Locale; we made the **full shop profile** editable (everything the setup wizard captures
+except admin credentials and logo) because those fields print on invoices and the README intent was "edit what
+the wizard set." Logo upload remains BACK-0-013.
+
+**Verification:** tsc + vite build clean; Rust recompiled in dev. curl — 401 (no token), 403 (mechanic),
+admin round-trip persisted (shop/device/tax 0.08/custom fields), 400 (empty shop name). Playwright — admin:
+open Settings → form hydrated → edit device → Save → "Settings saved." → persisted via `/api/config`;
+mechanic: notice shown, Save absent, inputs disabled. Zero console errors.
+
+**⚠️ Not implemented (intentional):** logo upload (BACK-0-013, needs Tauri fs); `tenant_id`/`branch_id` are
+not editable (identity columns).
+
+**Key files:**
+- `apps/desktop/src-tauri/src/api_data.rs` (`update_config`), `apps/desktop/src-tauri/src/server.rs` (route)
+- `apps/desktop/src/pages/settings.tsx` (new), `apps/desktop/src/stores/app-config.ts` (`updateConfig`)
+- `apps/desktop/src/App.tsx` (route), `apps/desktop/src/pages/dashboard.tsx` (card enabled)
+
+---

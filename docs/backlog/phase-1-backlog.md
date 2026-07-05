@@ -73,21 +73,6 @@ Seed script creates admin and mechanic users, but there is no in-app UI to manag
 
 ---
 
-## BACK-1-004 · App Config Settings Page
-
-**Priority:** Medium  
-**Area:** `apps/desktop/src/pages/settings.tsx`  
-**Description:**  
-`AppConfigTable` and `app-config.ts` store exist but there is no UI to edit the config (tenant name, branch ID, device name, currency symbol, locale). Currently only configurable via seed.
-
-**Acceptance Criteria:**
-- [ ] Settings page at route `/settings`
-- [ ] Edit form for: Device Name, Currency Symbol, Locale
-- [ ] Save persists to `app_config` table
-- [ ] Dashboard module card for Settings no longer shows "Coming Soon"
-
----
-
 ## BACK-1-005 · Hardware IO Foundation
 
 **Priority:** Low  

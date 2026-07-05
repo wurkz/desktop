@@ -99,7 +99,10 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
         .route("/api/login", post(auth::login))
         .route("/api/logout", post(auth::logout))
         .route("/api/me", get(auth::me))
-        .route("/api/config", get(api_data::get_config))
+        .route(
+            "/api/config",
+            get(api_data::get_config).put(api_data::update_config),
+        )
         .route("/api/setup", post(api_data::setup))
         .route("/api/stats", get(api_data::get_stats))
         .route(
