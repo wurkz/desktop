@@ -41,6 +41,8 @@ interface Props {
 export function IntakeForm({ asset, open, onOpenChange, initialComplaint, onCreated }: Props) {
     const navigate = useNavigate();
     const [complaint, setComplaint] = useState("");
+    const [jobOrderNo, setJobOrderNo] = useState("");
+    const [terms, setTerms] = useState("");
     const [items, setItems] = useState<InspectionItem[]>([]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
@@ -48,6 +50,8 @@ export function IntakeForm({ asset, open, onOpenChange, initialComplaint, onCrea
     useEffect(() => {
         if (open) {
             setComplaint(initialComplaint ?? "");
+            setJobOrderNo("");
+            setTerms("");
             setItems(CHECKLIST.map((item) => ({ item, status: "na", note: "" })));
             setError("");
         }
@@ -69,6 +73,8 @@ export function IntakeForm({ asset, open, onOpenChange, initialComplaint, onCrea
                 asset_id: asset.id,
                 customer_complaint: complaint.trim(),
                 inspection: items,
+                job_order_no: jobOrderNo.trim() || null,
+                terms: terms.trim() || null,
             });
             if (onCreated) await onCreated(ticket.id);
             onOpenChange(false);
@@ -99,6 +105,17 @@ export function IntakeForm({ asset, open, onOpenChange, initialComplaint, onCrea
                             value={complaint}
                             onChange={(e) => setComplaint(e.target.value)}
                         />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <Label htmlFor="jobno">Job Order No.</Label>
+                            <Input id="jobno" value={jobOrderNo} onChange={(e) => setJobOrderNo(e.target.value)} placeholder="paper form #, optional" />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="terms">Terms</Label>
+                            <Input id="terms" value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="e.g. COD, optional" />
+                        </div>
                     </div>
 
                     <div className="space-y-2">

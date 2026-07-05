@@ -13,6 +13,12 @@ export interface UpdateConfigInput {
     contact_email: string | null;
     tax_registration_id: string | null;
     custom_fields: Record<string, string> | null;
+    // BIR-style document fields (blank → not printed)
+    proprietor: string | null;
+    business_style: string | null;
+    vat_status: string | null; // 'vat' | 'non_vat' | null
+    terms_and_conditions: string | null;
+    document_title: string | null;
 }
 
 interface AppConfigState {

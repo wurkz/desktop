@@ -387,6 +387,8 @@ pub struct CreateOrderReq {
     asset_id: String,
     customer_complaint: Option<String>,
     inspection: Option<Value>,
+    job_order_no: Option<String>,
+    terms: Option<String>,
 }
 
 /// POST /api/orders — create a job ticket at status `triage`. Auth required.
@@ -413,17 +415,20 @@ pub async fn create_order(
     let id = uuid::Uuid::new_v4().to_string();
     let now = now_ms();
     let inspection_str = req.inspection.as_ref().map(|v| v.to_string());
+    let nz = |o: &Option<String>| o.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
 
     sqlx::query(
         "INSERT INTO orders (id, asset_id, customer_id, status, customer_complaint, inspection, \
-         subtotal, tax, discount, total, created_at, updated_at) \
-         VALUES (?, ?, ?, 'triage', ?, ?, 0, 0, 0, 0, ?, ?)",
+         job_order_no, terms, subtotal, tax, discount, total, created_at, updated_at) \
+         VALUES (?, ?, ?, 'triage', ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)",
     )
     .bind(&id)
     .bind(&req.asset_id)
     .bind(&customer_id)
     .bind(&req.customer_complaint)
     .bind(&inspection_str)
+    .bind(nz(&req.job_order_no))
+    .bind(nz(&req.terms))
     .bind(now)
     .bind(now)
     .execute(&state.pool)
@@ -610,6 +615,7 @@ pub struct EstimateItem {
     kind: String,
     description: String,
     quantity: f64,
+    unit: Option<String>, // e.g. "pc", "set", "L"
     unit_price: i64, // centavos
     inventory_item_id: Option<String>,
 }
@@ -642,15 +648,17 @@ pub async fn save_estimate(
     for item in &req.items {
         let total = (item.quantity * item.unit_price as f64).round() as i64;
         subtotal += total;
+        let unit = item.unit.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
         sqlx::query(
-            "INSERT INTO order_items (id, order_id, type, description, quantity, unit_price, total, inventory_item_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO order_items (id, order_id, type, description, quantity, unit, unit_price, total, inventory_item_id) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(uuid::Uuid::new_v4().to_string())
         .bind(&id)
         .bind(&item.kind)
         .bind(&item.description)
         .bind(item.quantity)
+        .bind(&unit)
         .bind(item.unit_price)
         .bind(total)
         .bind(&item.inventory_item_id)
@@ -798,6 +806,12 @@ pub struct UpdateConfigReq {
     contact_email: Option<String>,
     tax_registration_id: Option<String>,
     custom_fields: Option<Value>,
+    // BIR-style document fields (blank values simply aren't printed).
+    proprietor: Option<String>,
+    business_style: Option<String>,
+    vat_status: Option<String>,
+    terms_and_conditions: Option<String>,
+    document_title: Option<String>,
 }
 
 /// PUT /api/config — edit the shop profile (admin/owner only). Never touches
@@ -815,11 +829,14 @@ pub async fn update_config(
         return Err((StatusCode::BAD_REQUEST, "device name is required".to_string()));
     }
     let custom_fields = req.custom_fields.map(|v| v.to_string());
+    // Trim to None so blank optional fields store as NULL (and never print).
+    let nz = |o: &Option<String>| o.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     let now = now_ms();
     let result = sqlx::query(
         "UPDATE app_config SET shop_name = ?, device_name = ?, currency_symbol = ?, locale = ?, \
          tax_rate = ?, address = ?, contact_phone = ?, contact_email = ?, tax_registration_id = ?, \
-         custom_fields = ?, updated_at = ? WHERE id = 'default'",
+         custom_fields = ?, proprietor = ?, business_style = ?, vat_status = ?, \
+         terms_and_conditions = ?, document_title = ?, updated_at = ? WHERE id = 'default'",
     )
     .bind(req.shop_name.trim())
     .bind(req.device_name.trim())
@@ -831,6 +848,11 @@ pub async fn update_config(
     .bind(&req.contact_email)
     .bind(&req.tax_registration_id)
     .bind(&custom_fields)
+    .bind(nz(&req.proprietor))
+    .bind(nz(&req.business_style))
+    .bind(nz(&req.vat_status))
+    .bind(nz(&req.terms_and_conditions))
+    .bind(nz(&req.document_title))
     .bind(now)
     .execute(&state.pool)
     .await

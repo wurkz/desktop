@@ -22,6 +22,7 @@ interface Row {
     type: "service" | "part";
     description: string;
     quantity: string;
+    unit: string;
     unitPrice: string; // major units
     inventoryItemId?: string | null;
 }
@@ -32,6 +33,7 @@ const newRow = (type: "service" | "part", init?: Partial<Row>): Row => ({
     type,
     description: "",
     quantity: "1",
+    unit: "",
     unitPrice: "",
     ...init,
 });
@@ -60,6 +62,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                     newRow(it.type, {
                         description: it.description,
                         quantity: String(it.quantity),
+                        unit: it.unit ?? "",
                         unitPrice: String(fromCentavos(it.unit_price)),
                         inventoryItemId: it.inventory_item_id,
                     })
@@ -92,6 +95,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                 type: r.type,
                 description: r.description.trim(),
                 quantity: parseFloat(r.quantity) || 1,
+                unit: r.unit.trim() || null,
                 unit_price: toCentavos(parseFloat(r.unitPrice) || 0),
                 inventory_item_id: r.inventoryItemId ?? null,
             }));
@@ -138,6 +142,10 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                             <div className="w-14 space-y-1">
                                 <Label className="text-xs">Qty</Label>
                                 <Input value={r.quantity} onChange={(e) => setRow(r.key, { quantity: e.target.value })} inputMode="decimal" />
+                            </div>
+                            <div className="w-16 space-y-1">
+                                <Label className="text-xs">Unit</Label>
+                                <Input value={r.unit} onChange={(e) => setRow(r.key, { unit: e.target.value })} placeholder="pc" />
                             </div>
                             <div className="w-24 space-y-1">
                                 <Label className="text-xs">Price</Label>

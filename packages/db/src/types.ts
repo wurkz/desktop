@@ -78,6 +78,12 @@ export interface AppConfigTable {
     tax_registration_id: Nullable<string>;
     custom_fields: Nullable<string>; // JSON: { label: value }
     backup_dir: Nullable<string>; // backup destination folder (null → <data>/backups)
+    // BIR-style document fields (PH market). Blank values are not printed.
+    proprietor: Nullable<string>; // e.g. "Clandestine S. Palo"
+    business_style: Nullable<string>; // BIR trade name
+    vat_status: Nullable<string>; // 'vat' | 'non_vat' | null
+    terms_and_conditions: Nullable<string>; // printed T&C block
+    document_title: Nullable<string>; // printout title; null → "Invoice"
     created_at: number;
     updated_at: number;
 }
@@ -145,6 +151,8 @@ export interface OrdersTable {
     receipt_number: Nullable<string>; // set at billing
     approval_proof: Nullable<string>; // who + how approved (D5)
     inspection: Nullable<string>; // JSON: intake inspection checklist
+    job_order_no: Nullable<string>; // shop's pre-printed paper serial (BIR job order)
+    terms: Nullable<string>; // payment terms (e.g. "COD", "Net 15")
     subtotal: number; // centavos
     tax: number; // centavos
     discount: number; // centavos
@@ -167,6 +175,7 @@ export interface OrderItemsTable {
     type: 'service' | 'part';
     description: string;
     quantity: number;
+    unit: Nullable<string>; // e.g. "pc", "set", "L", "hrs"
     unit_price: number; // centavos
     total: number; // centavos
     inventory_item_id: Nullable<string>; // set when a part is picked from inventory

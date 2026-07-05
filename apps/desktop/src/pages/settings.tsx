@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent } from "@zorviz/ui";
-import { ArrowLeft, Store, Coins, Monitor, ListPlus, Plus, Trash2, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Store, Coins, Monitor, ListPlus, Plus, Trash2, Image as ImageIcon, FileText } from "lucide-react";
 import { useAuthStore } from "../stores/auth";
 import { useAppConfigStore } from "../stores/app-config";
 import { AssetTypesSettings } from "../features/repair/components/AssetTypesSettings";
@@ -24,6 +24,12 @@ export default function SettingsPage() {
     const [contactPhone, setContactPhone] = useState("");
     const [contactEmail, setContactEmail] = useState("");
     const [taxRegId, setTaxRegId] = useState("");
+    const [proprietor, setProprietor] = useState("");
+    const [businessStyle, setBusinessStyle] = useState("");
+    const [vatStatus, setVatStatus] = useState(""); // "" | "non_vat" | "vat"
+    // Document
+    const [documentTitle, setDocumentTitle] = useState("");
+    const [termsConditions, setTermsConditions] = useState("");
     // Currency & tax
     const [currencySymbol, setCurrencySymbol] = useState("");
     const [locale, setLocale] = useState("");
@@ -102,6 +108,11 @@ export default function SettingsPage() {
         setLocale(config.locale ?? "");
         setTaxRatePct(config.tax_rate != null ? String(config.tax_rate * 100) : "");
         setDeviceName(config.device_name ?? "");
+        setProprietor(config.proprietor ?? "");
+        setBusinessStyle(config.business_style ?? "");
+        setVatStatus(config.vat_status ?? "");
+        setDocumentTitle(config.document_title ?? "");
+        setTermsConditions(config.terms_and_conditions ?? "");
         let cf: CustomField[] = [];
         if (config.custom_fields) {
             try {
@@ -152,6 +163,11 @@ export default function SettingsPage() {
                 contact_email: contactEmail.trim() || null,
                 tax_registration_id: taxRegId.trim() || null,
                 custom_fields: customFieldsObj,
+                proprietor: proprietor.trim() || null,
+                business_style: businessStyle.trim() || null,
+                vat_status: vatStatus || null,
+                document_title: documentTitle.trim() || null,
+                terms_and_conditions: termsConditions.trim() || null,
             });
             setSaved(true);
         } catch (e) {
@@ -245,9 +261,59 @@ export default function SettingsPage() {
                                 <Input id="cemail" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} disabled={ro} />
                             </div>
                         </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label htmlFor="taxreg">Tax / Registration ID</Label>
+                                <Input id="taxreg" value={taxRegId} onChange={(e) => setTaxRegId(e.target.value)} disabled={ro} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="vat">Tax status</Label>
+                                <select
+                                    id="vat"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50"
+                                    value={vatStatus}
+                                    onChange={(e) => setVatStatus(e.target.value)}
+                                    disabled={ro}
+                                >
+                                    <option value="">— not shown —</option>
+                                    <option value="non_vat">Non-VAT registered</option>
+                                    <option value="vat">VAT registered</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label htmlFor="proprietor">Proprietor</Label>
+                                <Input id="proprietor" value={proprietor} onChange={(e) => setProprietor(e.target.value)} placeholder="e.g. Juan Dela Cruz — Sole Proprietor" disabled={ro} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="bizstyle">Business Style</Label>
+                                <Input id="bizstyle" value={businessStyle} onChange={(e) => setBusinessStyle(e.target.value)} disabled={ro} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex-row items-center gap-2 space-y-0">
+                        <FileText className="w-5 h-5 text-primary" />
+                        <CardTitle className="text-base">Printed Document</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                         <div className="space-y-1">
-                            <Label htmlFor="taxreg">Tax / Registration ID</Label>
-                            <Input id="taxreg" value={taxRegId} onChange={(e) => setTaxRegId(e.target.value)} disabled={ro} />
+                            <Label htmlFor="doctitle">Document Title</Label>
+                            <Input id="doctitle" value={documentTitle} onChange={(e) => setDocumentTitle(e.target.value)} placeholder="Invoice (default) — e.g. Job Order" disabled={ro} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="tc">Terms &amp; Conditions</Label>
+                            <textarea
+                                id="tc"
+                                className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                                placeholder="Printed at the bottom of the invoice / job order. Leave blank to omit."
+                                value={termsConditions}
+                                onChange={(e) => setTermsConditions(e.target.value)}
+                                disabled={ro}
+                            />
                         </div>
                     </CardContent>
                 </Card>

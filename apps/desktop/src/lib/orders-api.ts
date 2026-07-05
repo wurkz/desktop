@@ -13,6 +13,7 @@ export interface OrderItem {
     type: "service" | "part";
     description: string;
     quantity: number;
+    unit: string | null; // e.g. "pc", "set", "L"
     unit_price: number; // centavos
     total: number; // centavos
     inventory_item_id: string | null;
@@ -27,6 +28,8 @@ export interface JobTicket {
     customer_complaint: string | null;
     inspection: InspectionItem[] | null;
     receipt_number: string | null;
+    job_order_no: string | null;
+    terms: string | null;
     subtotal: number;
     tax: number;
     discount: number;
@@ -54,6 +57,7 @@ export interface EstimateItemInput {
     type: "service" | "part";
     description: string;
     quantity: number;
+    unit?: string | null; // e.g. "pc", "set", "L"
     unit_price: number; // centavos
     inventory_item_id?: string | null;
 }
@@ -96,6 +100,8 @@ export function createOrder(input: {
     asset_id: string;
     customer_complaint?: string;
     inspection?: InspectionItem[];
+    job_order_no?: string | null;
+    terms?: string | null;
 }): Promise<JobTicket> {
     return api.post<JobTicket>("/api/orders", input);
 }
