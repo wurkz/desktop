@@ -990,6 +990,7 @@ pub struct UpdateConfigReq {
     terms_and_conditions: Option<String>,
     document_title: Option<String>,
     max_discount_pct: Option<f64>, // fraction; null = no cap
+    mechanic_label: Option<String>, // display name for the mechanic role
 }
 
 /// PUT /api/config — edit the shop profile (admin/owner only). Never touches
@@ -1014,7 +1015,7 @@ pub async fn update_config(
         "UPDATE app_config SET shop_name = ?, device_name = ?, currency_symbol = ?, locale = ?, \
          tax_rate = ?, address = ?, contact_phone = ?, contact_email = ?, tax_registration_id = ?, \
          custom_fields = ?, proprietor = ?, business_style = ?, vat_status = ?, \
-         terms_and_conditions = ?, document_title = ?, max_discount_pct = ?, updated_at = ? WHERE id = 'default'",
+         terms_and_conditions = ?, document_title = ?, max_discount_pct = ?, mechanic_label = ?, updated_at = ? WHERE id = 'default'",
     )
     .bind(req.shop_name.trim())
     .bind(req.device_name.trim())
@@ -1032,6 +1033,7 @@ pub async fn update_config(
     .bind(nz(&req.terms_and_conditions))
     .bind(nz(&req.document_title))
     .bind(req.max_discount_pct.filter(|v| *v > 0.0))
+    .bind(nz(&req.mechanic_label))
     .bind(now)
     .execute(&state.pool)
     .await

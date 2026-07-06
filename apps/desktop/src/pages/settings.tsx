@@ -29,6 +29,7 @@ export default function SettingsPage() {
     const [proprietor, setProprietor] = useState("");
     const [businessStyle, setBusinessStyle] = useState("");
     const [vatStatus, setVatStatus] = useState(""); // "" | "non_vat" | "vat"
+    const [mechanicLabel, setMechanicLabel] = useState("");
     // Document
     const [documentTitle, setDocumentTitle] = useState("");
     const [termsConditions, setTermsConditions] = useState("");
@@ -149,6 +150,7 @@ export default function SettingsPage() {
         setProprietor(config.proprietor ?? "");
         setBusinessStyle(config.business_style ?? "");
         setVatStatus(config.vat_status ?? "");
+        setMechanicLabel(config.mechanic_label ?? "");
         setDocumentTitle(config.document_title ?? "");
         setTermsConditions(config.terms_and_conditions ?? "");
         let cf: CustomField[] = [];
@@ -207,6 +209,7 @@ export default function SettingsPage() {
                 proprietor: proprietor.trim() || null,
                 business_style: businessStyle.trim() || null,
                 vat_status: vatStatus || null,
+                mechanic_label: mechanicLabel.trim() || null,
                 document_title: documentTitle.trim() || null,
                 terms_and_conditions: termsConditions.trim() || null,
             });
@@ -331,6 +334,10 @@ export default function SettingsPage() {
                                 <Label htmlFor="bizstyle">Business Style</Label>
                                 <Input id="bizstyle" value={businessStyle} onChange={(e) => setBusinessStyle(e.target.value)} disabled={ro} />
                             </div>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="mechlabel">What do you call your mechanics?</Label>
+                            <Input id="mechlabel" value={mechanicLabel} onChange={(e) => setMechanicLabel(e.target.value)} placeholder="Mechanic (default) — e.g. Technician, Agent, Specialist" disabled={ro} />
                         </div>
                     </CardContent>
                 </Card>

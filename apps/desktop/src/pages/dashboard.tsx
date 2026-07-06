@@ -9,6 +9,7 @@ import { Wrench, Package, Settings, ChevronRight, Car, ClipboardList, TrendingUp
 import { BackupDialog } from "../features/backup/BackupDialog";
 import { api } from "../lib/api";
 import { logoUrl } from "../lib/logo-api";
+import { useRoleLabel } from "../lib/roles";
 
 interface DashboardStats {
     active_jobs: number;
@@ -21,6 +22,7 @@ export default function DashboardPage() {
     const { user, logout } = useAuthStore();
     const { config, fetchConfig } = useAppConfigStore();
     const navigate = useNavigate();
+    const roleLabel = useRoleLabel();
     const [backupOpen, setBackupOpen] = useState(false);
     const [stats, setStats] = useState<DashboardStats | null>(null);
 
@@ -107,7 +109,7 @@ export default function DashboardPage() {
                     <ServerStatus />
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className="text-sm text-muted-foreground">{user?.name} ({user?.role})</span>
+                    <span className="text-sm text-muted-foreground">{user?.name} ({user ? roleLabel(user.role) : ""})</span>
                     <Button variant="outline" size="sm" onClick={handleLogout}>Logout</Button>
                 </div>
             </header>

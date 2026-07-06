@@ -85,6 +85,7 @@ export interface AppConfigTable {
     terms_and_conditions: Nullable<string>; // printed T&C block
     document_title: Nullable<string>; // printout title; null → "Invoice"
     max_discount_pct: Nullable<number>; // cap on manual discount as a fraction (null = no cap)
+    mechanic_label: Nullable<string>; // display name for the mechanic role (null → "Mechanic")
     created_at: number;
     updated_at: number;
 }

@@ -16,12 +16,14 @@ import {
 import { ArrowLeft, UserPlus, Pencil } from "lucide-react";
 import { useAuthStore } from "../stores/auth";
 import { listAllUsers, createUser, updateUser, type StaffUser } from "../lib/users-api";
+import { useRoleLabel } from "../lib/roles";
 
 const ROLES = ["admin", "advisor", "mechanic"];
 
 export default function UsersPage() {
     const navigate = useNavigate();
     const currentUser = useAuthStore((s) => s.user);
+    const roleLabel = useRoleLabel();
     const isAdmin = currentUser?.role === "admin" || currentUser?.role === "owner";
 
     const [users, setUsers] = useState<StaffUser[]>([]);
@@ -122,7 +124,7 @@ export default function UsersPage() {
                                     {u.is_active === 0 && <span className="ml-2 text-xs text-muted-foreground">(inactive)</span>}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                    @{u.username} · <span className="capitalize">{u.role}</span>
+                                    @{u.username} · <span>{roleLabel(u.role)}</span>
                                 </div>
                             </div>
                             {isAdmin && (
@@ -162,11 +164,11 @@ export default function UsersPage() {
                                         key={r}
                                         type="button"
                                         onClick={() => setRole(r)}
-                                        className={`rounded-md border p-2 text-sm capitalize transition-colors ${
+                                        className={`rounded-md border p-2 text-sm transition-colors ${
                                             role === r ? "bg-primary/10 border-primary text-primary" : "hover:bg-muted"
                                         }`}
                                     >
-                                        {r}
+                                        {roleLabel(r)}
                                     </button>
                                 ))}
                             </div>
