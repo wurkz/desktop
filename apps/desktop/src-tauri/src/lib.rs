@@ -10,6 +10,7 @@ pub mod auth;
 pub mod backup;
 pub mod bookings;
 pub mod db;
+pub mod inventory;
 pub mod license;
 pub mod media;
 pub mod server;

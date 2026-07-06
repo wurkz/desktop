@@ -640,6 +640,9 @@ pub async fn search_inventory(
 pub struct CreateInventoryReq {
     name: String,
     sku: Option<String>,
+    description: Option<String>,
+    stock_on_hand: Option<f64>,
+    reorder_point: Option<f64>,
     unit_price: Option<i64>,
     unit_cost: Option<i64>,
 }
@@ -663,13 +666,17 @@ pub async fn create_inventory(
             .collect();
         format!("{}-{}", slug.trim_matches('-'), &id[..4])
     });
+    let desc = req.description.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     sqlx::query(
         "INSERT INTO inventory (id, sku, name, description, stock_on_hand, reorder_point, unit_cost, unit_price) \
-         VALUES (?, ?, ?, NULL, 0, 5, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&sku)
     .bind(req.name.trim())
+    .bind(&desc)
+    .bind(req.stock_on_hand.unwrap_or(0.0))
+    .bind(req.reorder_point.unwrap_or(5.0))
     .bind(req.unit_cost.unwrap_or(0))
     .bind(req.unit_price.unwrap_or(0))
     .execute(&state.pool)

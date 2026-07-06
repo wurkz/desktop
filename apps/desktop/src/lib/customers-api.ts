@@ -13,3 +13,10 @@ export function createCustomer(input: {
 }): Promise<Customer> {
     return api.post<Customer>("/api/customers", input);
 }
+
+// Bulk CSV import (rows already parsed client-side). Dedupes by name+phone server-side.
+export function importCustomers(
+    customers: { name: string; phone?: string; email?: string; address?: string }[]
+): Promise<{ imported: number; skipped: number }> {
+    return api.post<{ imported: number; skipped: number }>("/api/customers/import", { customers });
+}

@@ -15,6 +15,7 @@ import JobsPage from "./pages/jobs";
 import UsersPage from "./pages/users";
 import SettingsPage from "./pages/settings";
 import BookingsPage from "./pages/bookings";
+import InventoryPage from "./pages/inventory";
 import "@zorviz/ui/src/styles.css";
 
 function App() {
@@ -80,6 +81,10 @@ function App() {
                 <Route
                   path="/bookings"
                   element={isAuthenticated ? <BookingsPage /> : <Navigate to="/login" />}
+                />
+                <Route
+                  path="/inventory"
+                  element={isAuthenticated ? <InventoryPage /> : <Navigate to="/login" />}
                 />
                 <Route path="*" element={<Navigate to="/" />} />
               </>

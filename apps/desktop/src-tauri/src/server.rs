@@ -19,6 +19,7 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use crate::api_data;
 use crate::asset_types;
 use crate::bookings;
+use crate::inventory;
 use crate::media;
 use crate::auth::{self, ApiState, AuthState};
 
@@ -178,6 +179,15 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
             "/api/inventory",
             get(api_data::search_inventory).post(api_data::create_inventory),
         )
+        .route("/api/inventory/all", get(inventory::list_inventory))
+        .route("/api/inventory/import", post(inventory::import_inventory))
+        .route(
+            "/api/inventory/:id",
+            axum::routing::put(inventory::update_inventory).delete(inventory::delete_inventory),
+        )
+        .route("/api/inventory/:id/adjust", post(inventory::adjust_inventory))
+        .route("/api/inventory/:id/adjustments", get(inventory::list_adjustments))
+        .route("/api/customers/import", post(inventory::import_customers))
         .fallback(static_handler) // serve the SPA for everything else
         .layer(middleware::from_fn(license_gate))
         .layer(cors_layer())

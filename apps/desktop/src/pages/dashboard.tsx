@@ -78,14 +78,15 @@ export default function DashboardPage() {
                 color: "from-violet-500 to-violet-600",
             }]
             : []),
-        {
-            title: "Inventory",
-            description: "Track parts and stock levels",
-            icon: Package,
-            href: "/inventory",
-            color: "from-emerald-500 to-emerald-600",
-            disabled: true,
-        },
+        ...(user?.role === "admin" || user?.role === "owner" || user?.role === "advisor"
+            ? [{
+                title: "Inventory",
+                description: "Parts, stock levels & CSV import",
+                icon: Package,
+                href: "/inventory",
+                color: "from-emerald-500 to-emerald-600",
+            }]
+            : []),
         {
             title: "Settings",
             description: "Shop profile, currency & tax",
@@ -171,9 +172,8 @@ export default function DashboardPage() {
                         {modules.map((module) => (
                             <button
                                 key={module.title}
-                                onClick={() => !module.disabled && navigate(module.href)}
-                                disabled={module.disabled}
-                                className={`group p-6 border rounded-xl bg-card text-left transition-all hover:shadow-lg hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:border-border`}
+                                onClick={() => navigate(module.href)}
+                                className="group p-6 border rounded-xl bg-card text-left transition-all hover:shadow-lg hover:border-primary/50"
                             >
                                 <div className="flex items-start justify-between">
                                     <div className={`p-3 rounded-xl bg-gradient-to-br ${module.color} text-white shadow-lg`}>
@@ -183,9 +183,6 @@ export default function DashboardPage() {
                                 </div>
                                 <h4 className="font-semibold text-lg mt-4">{module.title}</h4>
                                 <p className="text-sm text-muted-foreground mt-1">{module.description}</p>
-                                {module.disabled && (
-                                    <span className="inline-block mt-2 text-xs px-2 py-1 bg-muted rounded-full">Coming Soon</span>
-                                )}
                             </button>
                         ))}
                     </div>
