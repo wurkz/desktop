@@ -38,6 +38,8 @@ export interface JobTicket {
     discount: number; // manual
     senior_discount: number; // computed 20%
     total: number;
+    started_at: number | null;
+    completed_at: number | null;
     created_at: number;
     updated_at: number;
     assigned_mechanic_id: string | null;
@@ -120,6 +122,12 @@ export function assignOrder(orderId: string, mechanicId: string | null): Promise
 
 export function completeItem(itemId: string, completed: boolean): Promise<JobTicket> {
     return api.put<JobTicket>(`/api/order_items/${itemId}/complete`, { completed });
+}
+
+// Mechanic starts work: approved → in_progress (stamps started_at; claims the job if
+// unassigned and the actor is a mechanic).
+export function startOrder(orderId: string): Promise<JobTicket> {
+    return api.post<JobTicket>(`/api/orders/${orderId}/start`);
 }
 
 export function markDone(orderId: string): Promise<JobTicket> {

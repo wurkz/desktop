@@ -162,6 +162,8 @@ export interface OrdersTable {
     discount: number; // centavos (manual)
     senior_discount: number; // centavos (computed 20% when senior/PWD)
     total: number; // centavos
+    started_at: Nullable<number>; // when work started (approved → in_progress)
+    completed_at: Nullable<number>; // when marked done
     created_at: number;
     updated_at: number;
 }

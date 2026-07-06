@@ -551,3 +551,34 @@ and the page is titled "My Jobs". Zero console errors.
 - `apps/desktop/src/pages/jobs.tsx` (role-adaptive), `apps/desktop/src/pages/dashboard.tsx` (tiles)
 
 ---
+
+## ✅ BACK-2-C018 · Explicit "Start Job" + job timing
+
+**Completed:** 2026-07-06
+**Origin:** owner — wanted an explicit mechanic "start work" action (was implicit: ticking the first checklist
+item bumped approved→in_progress) and the timing data for a future "how long did the job take" report.
+
+**What was implemented (migration 0012):**
+- **"Start Job" button** on an **approved** ticket (mechanic execution view). The interactive Work Checklist +
+  "Mark as Done" now appear only once the job is **in_progress**; an approved job just shows the Start button.
+- **`POST /api/orders/:id/start`** → `approved → in_progress`, stamps **`started_at`** (once, via COALESCE),
+  and **claims the job** (assigns to the current user) when it's unassigned and the actor is a mechanic. Auth
+  required; idempotent while in_progress.
+- **`mark_done`** now stamps **`completed_at`** (once) — so `orders` carries `started_at`/`completed_at` for a
+  future duration report.
+- UI surfaces the data now too: in-progress card shows "Started …"; the billing/done card shows **"Time on
+  job: 1h 25m"** (`completed_at − started_at`).
+- The old implicit bump in `complete_item` is left as a harmless fallback; the normal flow is now explicit
+  (Start → check tasks → Mark as Done).
+
+**Verification:** builds clean; migration 0012 applied. curl (as mechanic) — start → in_progress + started_at
+set + auto-assigned; complete items + done → completed_at set, started_at preserved. Playwright — approved job
+shows **Start Job** (no checklist) → click → in_progress with checklist + "Started"; a completed order's billing
+card shows **"Time on job:"**. Zero console errors.
+
+**Key files:**
+- `packages/db/migrations/sqlite/0012_job_timing.sql`, `packages/db/src/types.ts`
+- `apps/desktop/src-tauri/src/api_data.rs` (`start_order`, `mark_done` completed_at), `.../server.rs`
+- `apps/desktop/src/lib/orders-api.ts` (`startOrder` + timestamps), `apps/desktop/src/pages/job-ticket.tsx`
+
+---

@@ -1412,12 +1412,48 @@ pub async fn mark_done(
     if session_from_headers(&state, &headers).is_none() {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    sqlx::query("UPDATE orders SET status = 'done', updated_at = ? WHERE id = ?")
-        .bind(now_ms())
+    let now = now_ms();
+    // Stamp completed_at once (keep the first done time if re-marked).
+    sqlx::query("UPDATE orders SET status = 'done', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ?")
+        .bind(now)
+        .bind(now)
         .bind(&id)
         .execute(&state.pool)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
+}
+
+/// POST /api/orders/:id/start — a mechanic starts work: approved → in_progress, stamps
+/// `started_at` (once), and claims the job (assigns to the current user) if it's unassigned
+/// and the actor is a mechanic. Auth required. Idempotent while in_progress.
+pub async fn start_order(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<Value>, StatusCode> {
+    let session = session_from_headers(&state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let now = now_ms();
+    sqlx::query(
+        "UPDATE orders SET status = 'in_progress', started_at = COALESCE(started_at, ?), updated_at = ? \
+         WHERE id = ? AND status IN ('approved', 'in_progress')",
+    )
+    .bind(now)
+    .bind(now)
+    .bind(&id)
+    .execute(&state.pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // A mechanic starting an unassigned job claims it.
+    if session.role == "mechanic" {
+        let _ = sqlx::query("UPDATE orders SET assigned_mechanic_id = ?, updated_at = ? WHERE id = ? AND assigned_mechanic_id IS NULL")
+            .bind(&session.user_id)
+            .bind(now)
+            .bind(&id)
+            .execute(&state.pool)
+            .await;
+    }
     order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
 }
 

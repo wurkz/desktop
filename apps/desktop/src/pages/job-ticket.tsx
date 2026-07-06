@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button, Card, CardHeader, CardTitle, CardContent } from "@zorviz/ui";
 import { ArrowLeft, CheckCircle2, AlertTriangle, MinusCircle, FileText, UserCog } from "lucide-react";
 import { formatMoney } from "@zorviz/core";
-import { getOrder, completeItem, markDone, billOrder, type JobTicket, type InspectionItem } from "../lib/orders-api";
+import { getOrder, completeItem, startOrder, markDone, billOrder, type JobTicket, type InspectionItem } from "../lib/orders-api";
 import { generateInvoicePdf } from "../lib/invoice-pdf";
 import { StatusBadge } from "../components/status-badge";
 import { EstimateBuilder } from "../features/repair/components/EstimateBuilder";
@@ -26,6 +26,23 @@ const INSPECTION_ICON: Record<InspectionItem["status"], typeof CheckCircle2> = {
     na: MinusCircle,
 };
 
+function elapsed(ms: number): string {
+    const mins = Math.floor((Date.now() - ms) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const h = Math.floor(mins / 60);
+    return h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
+}
+
+// Human duration between two epoch-ms timestamps (e.g. "1h 25m").
+function duration(from: number, to: number): string {
+    const mins = Math.max(0, Math.round((to - from) / 60000));
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m ? `${h}h ${m}m` : `${h}h`;
+}
+
 export default function JobTicketPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -43,6 +60,14 @@ export default function JobTicketPage() {
     const toggleItem = async (itemId: string, completed: boolean) => {
         try {
             setTicket(await completeItem(itemId, completed));
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    const startJob = async () => {
+        if (!ticket) return;
+        try {
+            setTicket(await startOrder(ticket.id));
         } catch (e) {
             console.error(e);
         }
@@ -214,41 +239,56 @@ export default function JobTicketPage() {
                             </CardContent>
                         </Card>
 
-                        {(ticket.status === "approved" || ticket.status === "in_progress") &&
-                            ticket.items &&
-                            ticket.items.length > 0 && (
-                                <Card>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm">Work Checklist</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-2">
-                                        {ticket.items.map((it) => (
-                                            <label
-                                                key={it.id}
-                                                className="flex items-center gap-3 py-1 cursor-pointer select-none"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    className="h-5 w-5 shrink-0"
-                                                    checked={it.completed === 1}
-                                                    onChange={(e) => toggleItem(it.id, e.target.checked)}
-                                                />
-                                                <span className={it.completed === 1 ? "line-through text-muted-foreground" : ""}>
-                                                    {it.description}
-                                                    <span className="text-muted-foreground"> ×{it.quantity}</span>
-                                                </span>
-                                            </label>
-                                        ))}
-                                        <Button
-                                            className="w-full mt-2"
-                                            disabled={!ticket.items.every((it) => it.completed === 1)}
-                                            onClick={finishJob}
+                        {ticket.status === "approved" && ticket.items && ticket.items.length > 0 && (
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm">Work</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <p className="text-sm text-muted-foreground">
+                                        Approved — {ticket.items.length} task(s) ready. Start the job when you begin work.
+                                    </p>
+                                    <Button className="w-full" onClick={startJob}>Start Job</Button>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {ticket.status === "in_progress" && ticket.items && ticket.items.length > 0 && (
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm">Work Checklist</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    {ticket.started_at && (
+                                        <div className="text-xs text-muted-foreground">Started {elapsed(ticket.started_at)}</div>
+                                    )}
+                                    {ticket.items.map((it) => (
+                                        <label
+                                            key={it.id}
+                                            className="flex items-center gap-3 py-1 cursor-pointer select-none"
                                         >
-                                            Mark as Done
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            )}
+                                            <input
+                                                type="checkbox"
+                                                className="h-5 w-5 shrink-0"
+                                                checked={it.completed === 1}
+                                                onChange={(e) => toggleItem(it.id, e.target.checked)}
+                                            />
+                                            <span className={it.completed === 1 ? "line-through text-muted-foreground" : ""}>
+                                                {it.description}
+                                                <span className="text-muted-foreground"> ×{it.quantity}</span>
+                                            </span>
+                                        </label>
+                                    ))}
+                                    <Button
+                                        className="w-full mt-2"
+                                        disabled={!ticket.items.every((it) => it.completed === 1)}
+                                        onClick={finishJob}
+                                    >
+                                        Mark as Done
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
 
                         {(ticket.status === "done" || ticket.status === "paid") && (
                             <Card>
@@ -259,6 +299,9 @@ export default function JobTicketPage() {
                                 <CardContent className="space-y-2">
                                     {ticket.receipt_number && (
                                         <div className="text-sm text-muted-foreground">Receipt {ticket.receipt_number}</div>
+                                    )}
+                                    {ticket.started_at && ticket.completed_at && (
+                                        <div className="text-xs text-muted-foreground">Time on job: {duration(ticket.started_at, ticket.completed_at)}</div>
                                     )}
                                     {(ticket.discount > 0 || ticket.senior_discount > 0) && (
                                         <div className="text-xs text-muted-foreground">
