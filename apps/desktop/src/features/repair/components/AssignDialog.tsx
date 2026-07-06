@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@zorviz/ui";
 import { listUsers, type StaffUser } from "../../../lib/users-api";
 import { assignOrder, type JobTicket } from "../../../lib/orders-api";
+import { useRoleLabel } from "../../../lib/roles";
 
 interface Props {
     ticket: JobTicket;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function AssignDialog({ ticket, open, onOpenChange, onAssigned }: Props) {
+    const roleLabel = useRoleLabel();
     const [users, setUsers] = useState<StaffUser[]>([]);
     const [busy, setBusy] = useState(false);
 
@@ -35,7 +37,7 @@ export function AssignDialog({ ticket, open, onOpenChange, onAssigned }: Props) 
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Assign Mechanic</DialogTitle>
+                    <DialogTitle>Assign {roleLabel("mechanic")}</DialogTitle>
                     <DialogDescription>Who will work on this job?</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-2">

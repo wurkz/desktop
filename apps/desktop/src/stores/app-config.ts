@@ -20,6 +20,7 @@ export interface UpdateConfigInput {
     terms_and_conditions: string | null;
     document_title: string | null;
     max_discount_pct: number | null; // fraction; null = no cap
+    mechanic_label: string | null; // display name for the mechanic role (null → "Mechanic")
 }
 
 interface AppConfigState {
