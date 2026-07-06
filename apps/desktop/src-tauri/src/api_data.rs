@@ -914,8 +914,8 @@ pub async fn setup(
     if req.admin_name.trim().is_empty() || req.admin_username.trim().is_empty() {
         return Err((StatusCode::BAD_REQUEST, "admin name and username are required".to_string()));
     }
-    if req.admin_pin.len() != 4 || !req.admin_pin.chars().all(|c| c.is_ascii_digit()) {
-        return Err((StatusCode::BAD_REQUEST, "PIN must be exactly 4 digits".to_string()));
+    if req.admin_pin.len() != 6 || !req.admin_pin.chars().all(|c| c.is_ascii_digit()) {
+        return Err((StatusCode::BAD_REQUEST, "PIN must be exactly 6 digits".to_string()));
     }
 
     let now = now_ms();
@@ -1253,8 +1253,8 @@ pub async fn create_user(
     if req.name.trim().is_empty() || username.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "name and username are required".to_string()));
     }
-    if req.pin.len() != 4 || !req.pin.chars().all(|c| c.is_ascii_digit()) {
-        return Err((StatusCode::BAD_REQUEST, "PIN must be exactly 4 digits".to_string()));
+    if req.pin.len() != 6 || !req.pin.chars().all(|c| c.is_ascii_digit()) {
+        return Err((StatusCode::BAD_REQUEST, "PIN must be exactly 6 digits".to_string()));
     }
     let taken: i64 = sqlx::query("SELECT COUNT(*) AS c FROM users WHERE username = ?")
         .bind(&username)
@@ -1326,8 +1326,8 @@ pub async fn update_user(
             .bind(active).bind(now).bind(&id).execute(&state.pool).await.map_err(err)?;
     }
     if let Some(pin) = req.pin.as_ref() {
-        if pin.len() != 4 || !pin.chars().all(|c| c.is_ascii_digit()) {
-            return Err((StatusCode::BAD_REQUEST, "PIN must be exactly 4 digits".to_string()));
+        if pin.len() != 6 || !pin.chars().all(|c| c.is_ascii_digit()) {
+            return Err((StatusCode::BAD_REQUEST, "PIN must be exactly 6 digits".to_string()));
         }
         let (hash, salt) = crate::auth::hash_pin(pin);
         sqlx::query("UPDATE users SET pin_hash = ?, pin_salt = ?, updated_at = ? WHERE id = ?")

@@ -21,9 +21,9 @@ Davao City. Document title "Job Order"; max manual discount 15%.
 
 | Role     | Username | PIN  |
 |----------|----------|------|
-| Admin    | `admin`  | 1234 |
-| Advisor  | `ana`    | 2222 |
-| Mechanic | `boy`    | 3333 |
+| Admin    | `admin`  | 123456 |
+| Advisor  | `ana`    | 222222 |
+| Mechanic | `boy`    | 333333 |
 
 ## What gets seeded
 

@@ -28,9 +28,9 @@ const log = (m) => console.log(`  ${m}`);
 
 // PIN logins for the demo (documented in docs/demo-credentials.md).
 const USERS = {
-    admin: { name: "Owner (Noel P.)", username: "admin", pin: "1234" },
-    advisor: { name: "Ana Reyes", username: "ana", role: "advisor", pin: "2222" },
-    mechanic: { name: "Boy Santos", username: "boy", role: "mechanic", pin: "3333" },
+    admin: { name: "Owner (Noel P.)", username: "admin", pin: "123456" },
+    advisor: { name: "Ana Reyes", username: "ana", role: "advisor", pin: "222222" },
+    mechanic: { name: "Boy Santos", username: "boy", role: "mechanic", pin: "333333" },
 };
 
 async function waitForServer() {

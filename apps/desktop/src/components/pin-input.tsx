@@ -10,7 +10,7 @@ interface Props {
 
 // Segmented PIN entry: one box per digit, masked with an asterisk. Digits only;
 // auto-advances, Backspace walks back, paste distributes, mobile numeric keypad.
-export function PinInput({ length = 4, value, onChange, onComplete, idPrefix = "pin" }: Props) {
+export function PinInput({ length = 6, value, onChange, onComplete, idPrefix = "pin" }: Props) {
     const refs = useRef<(HTMLInputElement | null)[]>([]);
     const digits = Array.from({ length }, (_, i) => value[i] ?? "");
 
@@ -61,7 +61,7 @@ export function PinInput({ length = 4, value, onChange, onComplete, idPrefix = "
     };
 
     return (
-        <div className="flex justify-center gap-3" onPaste={handlePaste}>
+        <div className="flex justify-center gap-2" onPaste={handlePaste}>
             {digits.map((d, i) => (
                 <input
                     key={i}
@@ -71,7 +71,7 @@ export function PinInput({ length = 4, value, onChange, onComplete, idPrefix = "
                     inputMode="numeric"
                     autoComplete="off"
                     aria-label={`PIN digit ${i + 1}`}
-                    className="h-14 w-12 rounded-lg border border-input bg-background text-center text-2xl font-bold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="h-14 w-11 rounded-lg border border-input bg-background text-center text-2xl font-bold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={d ? "*" : ""}
                     onInput={(e) => handleInput(i, e)}
                     onKeyDown={(e) => handleKeyDown(i, e)}

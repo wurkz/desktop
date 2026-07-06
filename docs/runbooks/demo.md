@@ -23,7 +23,7 @@ every status, bookings, a populated inventory, and 3 logins. Takes ~1–2 minute
 compiles longer).
 
 - [ ] The script ends with **"✅ Demo seeded."** and the app window is open.
-- [ ] Log in as `admin / 1234` — the dashboard shows non-zero stats (active jobs, pending
+- [ ] Log in as `admin / 123456` — the dashboard shows non-zero stats (active jobs, pending
       estimates, month revenue, **low stock: 1**).
 
 > Seeding only (app already running and *unconfigured*): `npm run demo:seed`.
@@ -43,8 +43,8 @@ Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -ne 'WellK
 
 - [ ] Open `http://<pc-ip>:3030` on the phone → login screen loads. (If not, see
       Troubleshooting.)
-- [ ] Log the phone in as the mechanic (`boy / 3333`) and leave it on **My Jobs**.
-- [ ] On the PC, stay logged in as `admin / 1234`.
+- [ ] Log the phone in as the mechanic (`boy / 333333`) and leave it on **My Jobs**.
+- [ ] On the PC, stay logged in as `admin / 123456`.
 
 ## Phase 3 — Suggested walkthrough (~15 min)
 

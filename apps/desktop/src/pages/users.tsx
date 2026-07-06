@@ -172,8 +172,8 @@ export default function UsersPage() {
                             </div>
                         </div>
                         <div className="space-y-1">
-                            <Label htmlFor="upin">{creating ? "PIN (exactly 4 digits)" : "Reset PIN — 4 digits (leave blank to keep)"}</Label>
-                            <Input id="upin" type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value)} />
+                            <Label htmlFor="upin">{creating ? "PIN (exactly 6 digits)" : "Reset PIN — 6 digits (leave blank to keep)"}</Label>
+                            <Input id="upin" type="password" inputMode="numeric" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value)} />
                         </div>
                         {!creating && (
                             <label className="flex items-center gap-2 text-sm">

@@ -66,7 +66,7 @@ export default function SetupPage() {
         if (s === 4) {
             if (!adminName.trim()) return "Your name is required.";
             if (!username.trim()) return "Username is required.";
-            if (!/^\d{4}$/.test(pin)) return "PIN must be exactly 4 digits.";
+            if (!/^\d{6}$/.test(pin)) return "PIN must be exactly 6 digits.";
             if (pin !== confirmPin) return "PINs do not match.";
         }
         return "";
@@ -277,12 +277,12 @@ export default function SetupPage() {
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-2">
-                                    <Label htmlFor="pin">PIN * (4 digits)</Label>
-                                    <Input id="pin" type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value)} />
+                                    <Label htmlFor="pin">PIN * (6 digits)</Label>
+                                    <Input id="pin" type="password" inputMode="numeric" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="cpin">Confirm PIN *</Label>
-                                    <Input id="cpin" type="password" inputMode="numeric" maxLength={4} value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} />
+                                    <Input id="cpin" type="password" inputMode="numeric" maxLength={6} value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} />
                                 </div>
                             </div>
                         </>

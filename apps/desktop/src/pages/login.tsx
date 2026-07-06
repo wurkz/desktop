@@ -19,7 +19,7 @@ export default function LoginPage() {
     const [error, setError] = useState("");
 
     const doLogin = async (pinValue: string) => {
-        if (!username.trim() || pinValue.length !== 4 || isLoading) return;
+        if (!username.trim() || pinValue.length !== 6 || isLoading) return;
         setIsLoading(true);
         setError("");
         try {
@@ -73,16 +73,17 @@ export default function LoginPage() {
                         <div className="space-y-2">
                             <Label className="block text-center">PIN</Label>
                             <PinInput
+                                length={6}
                                 value={pin}
                                 onChange={setPin}
                                 onComplete={(v) => void doLogin(v)}
                             />
-                            <p className="text-center text-xs text-muted-foreground">PIN is 4 digits.</p>
+                            <p className="text-center text-xs text-muted-foreground">PIN is 6 digits.</p>
                         </div>
                         {error && <p className="text-sm text-destructive text-center">{error}</p>}
                     </CardContent>
                     <CardFooter>
-                        <Button className="w-full" type="submit" disabled={isLoading || pin.length !== 4}>
+                        <Button className="w-full" type="submit" disabled={isLoading || pin.length !== 6}>
                             {isLoading ? "Signing in..." : "Sign In"}
                         </Button>
                     </CardFooter>
