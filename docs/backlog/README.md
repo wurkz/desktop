@@ -30,7 +30,7 @@
 | Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~99% (12 of 13 ✅ — only online-enforcement remains, deferred fast-follow) |
 | Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~85% (settings, **data-driven asset types**, **demo seeder/reset** done; remaining all deferred: schema split, module registry, user-mgmt UI, hardware IO) |
 | Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ✅ **100%** (core loop, asset detail/edit/soft-delete, lightweight bookings, and job-ticket photos + note threads) |
-| Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | ~15% (inventory search/create + part-link done via estimate; mgmt page + stock deduction remain) |
+| Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | ~20% (no Phase-3 item fully closed yet; inventory search/create + part-link + **stock deduction/restock on approval/cancel** shipped via Phase 2 work — mgmt page remains) |
 | Phase 4 — Cloud Link | [backlog](./phase-4-backlog.md) | [completed](./phase-4-completed.md) | ~10% (8 items remaining) |
 
 > **Phase numbering ≠ work order.** For shipping v1, follow the **Critical Path** below, which
@@ -61,7 +61,7 @@ starting the next. Items marked *(mod)* have changed scope vs their original bac
 12. ~~**BACK-2-011** — Photo capture~~ ✅ **Done** (2026-07-05 — ticket photos via phone camera over LAN + append-only note threads; delete = advisor/admin)
 13. ~~**BACK-2-005** — Estimate builder~~ ✅ **Done** (2026-07-04 — live centavo totals, parts via inline-create picker)
 14. **BACK-3-001..004** — Basic inventory *(search/create done via estimate; full mgmt page remaining)*
-15. **BACK-3-006** — Parts linking + stock deduction on approval *(link column done; deduction pending)*
+15. ~~**BACK-3-006** — Parts linking + stock deduction on approval~~ ✅ **Done** (2026-07-06 — stock deducted for inventory-linked items on approval; restocked if an approved job is cancelled; may go negative = oversell surfaces on low-stock)
 16. ~~**BACK-2-006** — Customer approval~~ ✅ **Done** (2026-07-04 — simple who/how record, estimate→approved)
 17. ~~**BACK-2-008** — Mechanic assignment~~ ✅ **Done** (2026-07-04)
 18. ~~**BACK-2-007** — Mechanic "My Jobs" mobile view~~ ✅ **Done** (2026-07-04 — job board + checklist execution → done)

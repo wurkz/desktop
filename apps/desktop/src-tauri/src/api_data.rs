@@ -476,33 +476,84 @@ pub async fn get_order(
     order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
 }
 
+// Current status of an order, or None if it doesn't exist. Used by the transition guards
+// so lifecycle endpoints can't act on jobs in the wrong state (e.g. billing a cancelled job).
+async fn order_status(state: &ApiState, id: &str) -> Option<String> {
+    sqlx::query_scalar::<_, String>("SELECT status FROM orders WHERE id = ? LIMIT 1")
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten()
+}
+
 #[derive(Deserialize)]
 pub struct ApproveReq {
     approved_by: String,
     method: String, // verbal | phone | in_person
 }
 
-/// POST /api/orders/:id/approve — record a simple approval (who + how) and move to `approved`.
-/// No signature/OTP (D5). Auth required. (Stock deduction on approval is BACK-3-006, later.)
+/// POST /api/orders/:id/approve — record a simple approval (who + how) and move
+/// `estimate → approved`. No signature/OTP (D5). Auth required. On approval, stock is
+/// deducted for line items linked to inventory (D6/BACK-3-006) — exactly once, since the
+/// transition guard makes re-approval impossible.
 pub async fn approve_order(
     State(state): State<ApiState>,
     headers: HeaderMap,
     Path(id): Path<String>,
     Json(req): Json<ApproveReq>,
-) -> Result<Json<Value>, StatusCode> {
+) -> Result<Json<Value>, (StatusCode, String)> {
     if session_from_headers(&state, &headers).is_none() {
-        return Err(StatusCode::UNAUTHORIZED);
+        return Err((StatusCode::UNAUTHORIZED, "unauthorized".to_string()));
+    }
+    match order_status(&state, &id).await.as_deref() {
+        None => return Err((StatusCode::NOT_FOUND, "order not found".to_string())),
+        Some("estimate") => {}
+        Some(s) => {
+            return Err((StatusCode::CONFLICT, format!("Only a pending estimate can be approved (this job is {}).", s)))
+        }
     }
     let now = now_ms();
     let proof = json!({ "approved_by": req.approved_by.trim(), "method": req.method, "at": now }).to_string();
-    sqlx::query("UPDATE orders SET status = 'approved', approval_proof = ?, updated_at = ? WHERE id = ?")
-        .bind(&proof)
-        .bind(now)
-        .bind(&id)
-        .execute(&state.pool)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    order_detail(&state, &id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
+    sqlx::query(
+        "UPDATE orders SET status = 'approved', approval_proof = ?, updated_at = ? WHERE id = ? AND status = 'estimate'",
+    )
+    .bind(&proof)
+    .bind(now)
+    .bind(&id)
+    .execute(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "approve failed".to_string()))?;
+
+    // Deduct stock for parts picked from inventory (D6). May go negative — that surfaces
+    // as an oversell on the low-stock report rather than blocking the shop mid-approval.
+    adjust_stock_for_order(&state, &id, -1.0).await;
+
+    order_detail(&state, &id).await.ok_or((StatusCode::NOT_FOUND, "not found".to_string())).map(Json)
+}
+
+// Apply each inventory-linked line item's quantity × sign to stock_on_hand.
+// sign = -1.0 deducts (approval); sign = +1.0 restocks (cancel after approval).
+async fn adjust_stock_for_order(state: &ApiState, order_id: &str, sign: f64) {
+    if let Ok(rows) = sqlx::query(
+        "SELECT inventory_item_id, quantity FROM order_items WHERE order_id = ? AND inventory_item_id IS NOT NULL",
+    )
+    .bind(order_id)
+    .fetch_all(&state.pool)
+    .await
+    {
+        for r in rows {
+            let inv_id: Option<String> = r.try_get("inventory_item_id").ok();
+            let qty: f64 = r.try_get("quantity").unwrap_or(0.0);
+            if let Some(inv_id) = inv_id {
+                let _ = sqlx::query("UPDATE inventory SET stock_on_hand = stock_on_hand + ? WHERE id = ?")
+                    .bind(sign * qty)
+                    .bind(&inv_id)
+                    .execute(&state.pool)
+                    .await;
+            }
+        }
+    }
 }
 
 // Build a job-ticket detail object: order fields (inspection parsed) + nested asset + customer.
@@ -680,6 +731,13 @@ pub async fn save_estimate(
 ) -> Result<Json<Value>, (StatusCode, String)> {
     if session_from_headers(&state, &headers).is_none() {
         return Err((StatusCode::UNAUTHORIZED, "unauthorized".to_string()));
+    }
+
+    // The estimate is only editable before approval (guarded BEFORE deleting items).
+    match order_status(&state, &id).await.as_deref() {
+        None => return Err((StatusCode::NOT_FOUND, "order not found".to_string())),
+        Some("triage") | Some("estimate") => {}
+        Some(s) => return Err((StatusCode::CONFLICT, format!("The estimate can no longer be edited (this job is {}).", s))),
     }
 
     // Cap check BEFORE mutating anything (compute subtotal from the incoming items first).
@@ -1293,6 +1351,12 @@ pub async fn assign_order(
     if session_from_headers(&state, &headers).is_none() {
         return Err(StatusCode::UNAUTHORIZED);
     }
+    // Closed jobs (paid/cancelled) can't be (re)assigned.
+    match order_status(&state, &id).await.as_deref() {
+        None => return Err(StatusCode::NOT_FOUND),
+        Some("paid") | Some("cancelled") => return Err(StatusCode::CONFLICT),
+        _ => {}
+    }
     sqlx::query("UPDATE orders SET assigned_mechanic_id = ?, updated_at = ? WHERE id = ?")
         .bind(&req.mechanic_id)
         .bind(now_ms())
@@ -1385,6 +1449,12 @@ pub async fn complete_item(
         .and_then(|r| r.try_get::<String, _>("order_id").ok())
         .ok_or(StatusCode::NOT_FOUND)?;
 
+    // Work items are only tickable while the job is actually executable.
+    match order_status(&state, &order_id).await.as_deref() {
+        Some("approved") | Some("in_progress") => {}
+        _ => return Err(StatusCode::CONFLICT),
+    }
+
     sqlx::query("UPDATE order_items SET completed = ? WHERE id = ?")
         .bind(if req.completed { 1 } else { 0 })
         .bind(&item_id)
@@ -1403,7 +1473,7 @@ pub async fn complete_item(
     order_detail(&state, &order_id).await.ok_or(StatusCode::NOT_FOUND).map(Json)
 }
 
-/// POST /api/orders/:id/done — mark the job done. Auth required.
+/// POST /api/orders/:id/done — mark the job done (only from approved/in_progress). Auth required.
 pub async fn mark_done(
     State(state): State<ApiState>,
     headers: HeaderMap,
@@ -1411,6 +1481,11 @@ pub async fn mark_done(
 ) -> Result<Json<Value>, StatusCode> {
     if session_from_headers(&state, &headers).is_none() {
         return Err(StatusCode::UNAUTHORIZED);
+    }
+    match order_status(&state, &id).await.as_deref() {
+        None => return Err(StatusCode::NOT_FOUND),
+        Some("approved") | Some("in_progress") => {}
+        _ => return Err(StatusCode::CONFLICT),
     }
     let now = now_ms();
     // Stamp completed_at once (keep the first done time if re-marked).
@@ -1463,6 +1538,13 @@ pub async fn cancel_order(
         .execute(&state.pool)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "cancel failed".to_string()))?;
+
+    // Stock was deducted at approval (D6) — cancelling an already-approved job puts the
+    // linked parts back so inventory doesn't drift.
+    if matches!(status.as_deref(), Some("approved") | Some("in_progress") | Some("done")) {
+        adjust_stock_for_order(&state, &id, 1.0).await;
+    }
+
     order_detail(&state, &id).await.ok_or((StatusCode::NOT_FOUND, "not found".to_string())).map(Json)
 }
 
@@ -1507,6 +1589,13 @@ pub async fn bill_order(
 ) -> Result<Json<Value>, StatusCode> {
     if session_from_headers(&state, &headers).is_none() {
         return Err(StatusCode::UNAUTHORIZED);
+    }
+    // Only a finished job can be billed ('paid' allowed again — re-billing is idempotent
+    // and reuses the receipt number).
+    match order_status(&state, &id).await.as_deref() {
+        None => return Err(StatusCode::NOT_FOUND),
+        Some("done") | Some("paid") => {}
+        _ => return Err(StatusCode::CONFLICT),
     }
 
     // Reuse an existing receipt number if this order was already billed.

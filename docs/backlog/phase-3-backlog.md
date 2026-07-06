@@ -92,19 +92,12 @@ Manual stock adjustments (receiving new stock, corrections) distinct from automa
 
 ---
 
-## BACK-3-006 · Parts Linking to Job Tickets
-
-**Priority:** 🔴 High  
-**Area:** Integration between `@zorviz/feature-repair` and `@zorviz/feature-inventory`  
-**Description:**  
-When an advisor adds a Part line item to a Job Ticket estimate, they should be able to search and select from the Inventory catalog.
-
-**Acceptance Criteria:**
-- [ ] In the Estimation UI (BACK-2-005), "Add Part" opens a searchable inventory picker
-- [ ] Selected part auto-fills description, unit price, and links `order_items.inventory_item_id`
-- [ ] `order_items` table gets `inventory_item_id` column (nullable, new migration required)
-- [ ] Upon customer approval (BACK-2-006), `adjustStock(id, -quantity)` called for all linked parts
-- [ ] If stock would go negative, show a warning (do not hard block)
+_(BACK-3-006 · Parts Linking to Job Tickets — ✅ completed 2026-07-06. The picker +
+`order_items.inventory_item_id` link shipped in BACK-2-C005; **stock deduction on approval +
+restock on cancel-after-approval** landed in the 2026-07-06 gap sweep (see `phase-3-completed.md`).
+Stock may go negative — an oversell surfaces via the dashboard low-stock count rather than blocking
+approval, per the "do not hard block" criterion; a proactive UI warning remains a nice-to-have for
+the inventory-page work.)_
 
 ---
 

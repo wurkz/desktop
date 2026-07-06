@@ -169,9 +169,11 @@ export default function JobTicketPage() {
                                         <UserCog className="w-4 h-4" />
                                         {ticket.mechanic ? ticket.mechanic.name : "Unassigned"}
                                     </span>
-                                    <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
-                                        Assign
-                                    </Button>
+                                    {ticket.status !== "paid" && ticket.status !== "cancelled" && (
+                                        <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
+                                            Assign
+                                        </Button>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -374,12 +376,14 @@ export default function JobTicketPage() {
                             onOpenChange={setEstimateOpen}
                             onSaved={setTicket}
                         />
-                        <DiscountsDialog
-                            ticket={ticket}
-                            open={discountsOpen}
-                            onOpenChange={setDiscountsOpen}
-                            onSaved={setTicket}
-                        />
+                        {isStaff && (
+                            <DiscountsDialog
+                                ticket={ticket}
+                                open={discountsOpen}
+                                onOpenChange={setDiscountsOpen}
+                                onSaved={setTicket}
+                            />
+                        )}
 
                         <Dialog open={cancelOpen} onOpenChange={(o) => { if (!cancelling) setCancelOpen(o); }}>
                             <DialogContent>
