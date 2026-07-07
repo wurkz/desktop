@@ -1,6 +1,6 @@
 # Phase 2 Backlog — Repair Module
 
-> **Status:** Seven open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation), BACK-2-018 (Appearance -> Settings). Everything else complete — core loop,
+> **Status:** Eight open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation), BACK-2-018 (Appearance -> Settings), BACK-2-019 (mobile one-row KPI strip). Everything else complete — core loop,
 > asset detail/edit/soft-delete, lightweight bookings, photos + note threads, role-based Jobs views,
 > Start Job + timing, cancel, discounts. Completed items live in [`phase-2-completed.md`](./phase-2-completed.md).
 > **Scope:** Asset Management, Job Orders, Service History, Mechanic Views, Billing
@@ -214,6 +214,37 @@ has grown tiles.
 - [ ] Theme switcher available in Settings, usable regardless of the page's admin read-only gating
 - [ ] Every role (incl. mechanics) still has a way to change theme (per the BACK-2-015 decision)
 - [ ] Theme choice persists as it does today
+
+---
+
+## BACK-2-019 · Mobile Dashboard — Compact One-Row KPI Strip
+
+**Priority:** 🟡 Medium (mobile-first rule from Plan.txt; action tiles must be reachable fast)
+**Area:** `apps/desktop/src/pages/dashboard.tsx` (Stats Cards grid, `grid-cols-1 md:grid-cols-4`)
+**Origin:** Owner request 2026-07-07.
+
+**Problem:**
+On mobile the four KPI cards (**Active Jobs, Pending Estimates, Low Stock, This Month**) render as
+`grid-cols-1` — four stacked full-height cards — pushing the **action tiles** (My Jobs / Jobs,
+Bookings, …) below the fold. Users must scroll before they can act.
+
+**Owner decision:** on mobile, keep the KPIs in **one full-width row** (all four side by side,
+compact) so **at least the first 2–3 action tiles are visible immediately** without scrolling.
+
+**Build notes:**
+- `grid-cols-4` at all breakpoints, with a compact mobile cell: smaller padding, number-first
+  layout, short/abbreviated labels on small screens (e.g. "Jobs / Estimates / Low Stock / Month"),
+  and compact money formatting for the revenue figure if needed (e.g. ₱6.4k) so 4 cells fit ~360px.
+- Desktop keeps the current comfortable 4-card look (`md:` styles unchanged).
+- Interplay with **BACK-2-015**: mechanics will see fewer stats (no revenue) — the strip should lay
+  out cleanly with 2–3 cells too.
+- Verify on a real phone (~360–430px): KPI strip is one line; ≥2 action tiles visible on first paint.
+
+**Acceptance Criteria:**
+- [ ] Mobile: all four KPIs on one full-width row (no wrap, no horizontal scroll at 360px)
+- [ ] Mobile: at least the first 2–3 action tiles visible without scrolling on first load
+- [ ] Desktop layout unchanged
+- [ ] Strip degrades cleanly when fewer stats are shown (BACK-2-015 mechanic view)
 
 ---
 
