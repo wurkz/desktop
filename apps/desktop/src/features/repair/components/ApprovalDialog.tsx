@@ -16,6 +16,7 @@ const METHODS: { key: string; label: string }[] = [
     { key: "verbal", label: "In person" },
     { key: "phone", label: "Phone" },
     { key: "message", label: "Message" },
+    { key: "signed", label: "Signed job order" },
 ];
 
 interface Props {
@@ -73,7 +74,7 @@ export function ApprovalDialog({ ticket, open, onOpenChange, onApproved }: Props
                     </div>
                     <div className="space-y-1">
                         <Label>How</Label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             {METHODS.map((m) => (
                                 <button
                                     key={m.key}

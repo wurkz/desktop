@@ -700,3 +700,47 @@ but a dedicated iOS Safari pass wasn't recorded).
 
 **Key files:**
 - `apps/desktop/src/features/repair/components/TicketPhotos.tsx`
+
+## ✅ BACK-2-C022 · Print Job Order at Estimate Stage (for customer signature)
+
+**Completed:** 2026-07-07
+**Original Backlog ID:** BACK-2-014
+
+**What was implemented:**
+- Added a **"Job Order"** PDF button to the Estimate card header on the job ticket, shown when the
+  ticket has line items and its status is `triage`, `estimate`, or `approved` (the last so a signed
+  copy can be reprinted). It sits beside the Create/Edit button, so the advisor can print → have the
+  customer sign the *Conformed* line → tap **Mark Approved**.
+- Reuses `generateInvoicePdf` (line items, totals, T&C, Prepared-by/Conformed signature lines were
+  already in the layout). Added an optional `{ forApproval }` argument that stamps
+  **"FOR CUSTOMER APPROVAL"** under the title — applied only pre-approval (`triage`/`estimate`), so a
+  signed estimate copy is never confused with the final billed invoice. `approved` reprints omit the
+  stamp.
+- Added **"Signed job order"** as a fourth approval method in `ApprovalDialog` (grid switched from
+  3 to 2 columns to fit), so the approval record reflects the paper-signature flow.
+
+**Bug fixed along the way — peso sign corrupted every PDF amount:**
+- `formatMoney` prefixes the configured currency symbol; with the shop's `₱` (U+20B1), jsPDF's
+  built-in Helvetica (Latin-1 only) corrupted the *entire* amount string (e.g. `₱1,000.00` rendered
+  as `±&1&,&0&0&0…`). This affected the existing Invoice PDF too, not just the new Job Order.
+- Fix: embed a **Noto Sans** subset (SIL OFL, subset via fontTools to Latin + punctuation + currency
+  symbols, ~26 KB/weight) and register it on every jsPDF doc; all `setFont` calls switched from
+  `helvetica` to the embedded family. Amounts now render as `₱1,000.00` correctly.
+- ⚠️ Limitation: the embedded font is subset to Latin/punctuation/currency ranges — shop text using
+  characters outside those ranges (e.g. CJK) would not render in PDFs. Fine for the Latin+₱ market.
+
+**Design decisions / trade-offs:**
+- Chose to embed the real ₱ glyph (owner's call) over the simpler "PHP" ASCII fallback, for a nicer
+  customer-facing document; accepted the ~70 KB (base64, both weights) bundle cost.
+- PDF "print" remains a download (decision D9) — the shop opens and prints the saved PDF; no browser
+  print dialog. In the Tauri WebView2 window the file saves silently to Downloads.
+
+**Verification:** `tsc --noEmit` clean; owner confirmed in-app — the Job Order PDF downloads, shows
+"FOR CUSTOMER APPROVAL", correct ₱ figures (₱1,000 / ₱500 / Total ₱1,680), T&C, and the
+Prepared-by/Conformed lines.
+
+**Key files:**
+- `apps/desktop/src/pages/job-ticket.tsx` (Job Order button + `printJobOrder`)
+- `apps/desktop/src/lib/invoice-pdf.ts` (`forApproval` stamp + embedded-font wiring)
+- `apps/desktop/src/lib/pdf-font.ts` (new — embedded Noto Sans subset + `registerPdfFont`)
+- `apps/desktop/src/features/repair/components/ApprovalDialog.tsx` ("Signed job order" method)

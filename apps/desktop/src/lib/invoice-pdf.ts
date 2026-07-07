@@ -3,14 +3,22 @@ import { formatMoney } from "@zorviz/core";
 import type { AppConfig } from "@zorviz/db";
 import type { JobTicket } from "./orders-api";
 import { fetchLogoDataUrl } from "./logo-api";
+import { registerPdfFont, PDF_FONT_FAMILY } from "./pdf-font";
 
 // Generate + download a PDF invoice / job order from a ticket (D9: PDF export, no direct
 // print). Modeled on a BIR-style manual job order (PH market): configurable title, shop
 // identity (proprietor / VAT status / TIN), a UNIT column, a terms & conditions block, and
 // Prepared-by / Conformed signature lines. Blank fields are never printed (no empty lines).
-export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | null) {
+export async function generateInvoicePdf(
+    ticket: JobTicket,
+    config: AppConfig | null,
+    opts?: { forApproval?: boolean }
+) {
     const currency = config?.currency_symbol ?? "";
     const doc = new jsPDF();
+    // Embed a Unicode font so non-Latin-1 currency symbols (e.g. ₱) render correctly;
+    // jsPDF's built-in Helvetica would otherwise corrupt the whole amount string.
+    registerPdfFont(doc);
     const left = 15;
     const right = 195;
     let y = 18;
@@ -35,10 +43,10 @@ export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | 
     }
 
     // Shop header
-    doc.setFont("helvetica", "bold");
+    doc.setFont(PDF_FONT_FAMILY, "bold");
     doc.setFontSize(18);
     doc.text(config?.shop_name ?? "Invoice", headerX, y);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(PDF_FONT_FAMILY, "normal");
     doc.setFontSize(9);
     y += 6;
 
@@ -62,12 +70,21 @@ export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | 
 
     // Document meta (right aligned): title, receipt/job-order no., date, terms.
     const title = (config?.document_title || "Invoice").toUpperCase();
-    doc.setFont("helvetica", "bold");
+    doc.setFont(PDF_FONT_FAMILY, "bold");
     doc.setFontSize(14);
     doc.text(title, right, 18, { align: "right" });
-    doc.setFont("helvetica", "normal");
+    doc.setFont(PDF_FONT_FAMILY, "normal");
     doc.setFontSize(9);
     let my = 24;
+    // Pre-approval copies are annotated so a signed estimate isn't mistaken for the billed doc.
+    if (opts?.forApproval) {
+        doc.setFont(PDF_FONT_FAMILY, "bold");
+        doc.setFontSize(8);
+        doc.text("FOR CUSTOMER APPROVAL", right, my, { align: "right" });
+        doc.setFont(PDF_FONT_FAMILY, "normal");
+        doc.setFontSize(9);
+        my += 5;
+    }
     doc.text(ticket.receipt_number ?? "(unbilled)", right, my, { align: "right" });
     my += 5;
     if (ticket.job_order_no) { doc.text(`Job Order No.: ${ticket.job_order_no}`, right, my, { align: "right" }); my += 5; }
@@ -78,9 +95,9 @@ export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | 
     y = Math.max(y, my) + 4;
 
     // Bill to + asset
-    doc.setFont("helvetica", "bold");
+    doc.setFont(PDF_FONT_FAMILY, "bold");
     doc.text("Bill To:", left, y);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(PDF_FONT_FAMILY, "normal");
     y += 5;
     if (ticket.customer) {
         doc.text(ticket.customer.name, left, y);
@@ -104,13 +121,13 @@ export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | 
 
     // Line items table (QTY · UNIT · DESCRIPTION · UNIT PRICE · AMOUNT)
     const qtyX = 108, unitX = 116, priceX = 165;
-    doc.setFont("helvetica", "bold");
+    doc.setFont(PDF_FONT_FAMILY, "bold");
     doc.text("Description", left, y);
     doc.text("Qty", qtyX, y, { align: "right" });
     doc.text("Unit", unitX, y);
     doc.text("Price", priceX, y, { align: "right" });
     doc.text("Amount", right, y, { align: "right" });
-    doc.setFont("helvetica", "normal");
+    doc.setFont(PDF_FONT_FAMILY, "normal");
     y += 2;
     doc.line(left, y, right, y);
     y += 5;
@@ -128,7 +145,7 @@ export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | 
     y += 6;
 
     const totalRow = (label: string, val: string, bold = false) => {
-        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFont(PDF_FONT_FAMILY, bold ? "bold" : "normal");
         doc.text(label, 150, y, { align: "right" });
         doc.text(val, right, y, { align: "right" });
         y += 6;
@@ -142,10 +159,10 @@ export async function generateInvoicePdf(ticket: JobTicket, config: AppConfig | 
     // Terms & Conditions block (only if configured).
     if (config?.terms_and_conditions) {
         y += 4;
-        doc.setFont("helvetica", "bold");
+        doc.setFont(PDF_FONT_FAMILY, "bold");
         doc.setFontSize(8);
         doc.text("TERMS & CONDITIONS:", left, y);
-        doc.setFont("helvetica", "normal");
+        doc.setFont(PDF_FONT_FAMILY, "normal");
         y += 4;
         const tcLines = doc.splitTextToSize(config.terms_and_conditions, right - left);
         doc.text(tcLines, left, y);

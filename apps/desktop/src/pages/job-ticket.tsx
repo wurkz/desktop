@@ -4,7 +4,7 @@ import {
     Button, Card, CardHeader, CardTitle, CardContent,
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@zorviz/ui";
-import { ArrowLeft, CheckCircle2, AlertTriangle, MinusCircle, FileText, UserCog, Ban } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle, MinusCircle, FileText, UserCog, Ban, Printer } from "lucide-react";
 import { formatMoney } from "@zorviz/core";
 import { getOrder, completeItem, startOrder, markDone, billOrder, cancelOrder, type JobTicket, type InspectionItem } from "../lib/orders-api";
 import { ApiError } from "../lib/api";
@@ -95,6 +95,13 @@ export default function JobTicketPage() {
         } catch (e) {
             console.error(e);
         }
+    };
+    // Download the Job Order PDF. Pre-approval (triage/estimate) copies are annotated
+    // "FOR CUSTOMER APPROVAL" so the signed estimate isn't confused with the billed invoice.
+    const printJobOrder = () => {
+        if (!ticket) return;
+        const preApproval = ticket.status === "triage" || ticket.status === "estimate";
+        void generateInvoicePdf(ticket, config, { forApproval: preApproval }).catch(console.error);
     };
     const cancelJob = async () => {
         if (!ticket) return;
@@ -218,12 +225,20 @@ export default function JobTicketPage() {
                         <Card>
                             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                                 <CardTitle className="text-sm">Estimate</CardTitle>
-                                {(ticket.status === "triage" || ticket.status === "estimate") && (
-                                    <Button size="sm" variant="outline" onClick={() => setEstimateOpen(true)}>
-                                        <FileText className="h-4 w-4 mr-1" />
-                                        {ticket.items && ticket.items.length > 0 ? "Edit" : "Create"}
-                                    </Button>
-                                )}
+                                <div className="flex gap-2">
+                                    {ticket.items && ticket.items.length > 0 &&
+                                        (ticket.status === "triage" || ticket.status === "estimate" || ticket.status === "approved") && (
+                                            <Button size="sm" variant="outline" onClick={printJobOrder}>
+                                                <Printer className="h-4 w-4 mr-1" /> Job Order
+                                            </Button>
+                                        )}
+                                    {(ticket.status === "triage" || ticket.status === "estimate") && (
+                                        <Button size="sm" variant="outline" onClick={() => setEstimateOpen(true)}>
+                                            <FileText className="h-4 w-4 mr-1" />
+                                            {ticket.items && ticket.items.length > 0 ? "Edit" : "Create"}
+                                        </Button>
+                                    )}
+                                </div>
                             </CardHeader>
                             <CardContent className="text-sm space-y-2">
                                 {ticket.items && ticket.items.length > 0 ? (
