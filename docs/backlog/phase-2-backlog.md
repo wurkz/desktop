@@ -1,6 +1,6 @@
 # Phase 2 Backlog — Repair Module
 
-> **Status:** Twelve open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation), BACK-2-018 (Appearance -> Settings), BACK-2-019 (mobile one-row KPI strip), BACK-2-020 (billing actions staff-only), BACK-2-021 (case-insensitive usernames), BACK-2-022 (slide-to-confirm on actions), BACK-2-023 (assign staff-only). Everything else complete — core loop,
+> **Status:** Thirteen open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation), BACK-2-018 (Appearance -> Settings), BACK-2-019 (mobile one-row KPI strip), BACK-2-020 (billing actions staff-only), BACK-2-021 (case-insensitive usernames), BACK-2-022 (slide-to-confirm on actions), BACK-2-023 (assign staff-only), BACK-2-024 (responsive estimate dialog). Everything else complete — core loop,
 > asset detail/edit/soft-delete, lightweight bookings, photos + note threads, role-based Jobs views,
 > Start Job + timing, cancel, discounts. Completed items live in [`phase-2-completed.md`](./phase-2-completed.md).
 > **Scope:** Asset Management, Job Orders, Service History, Mechanic Views, Billing
@@ -393,6 +393,39 @@ admin/advisor (and owner) can assign and re-assign jobs to mechanics.
 - [ ] Admin/advisor/owner assign + re-assign unchanged
 - [ ] Server rejects mechanic `POST /:id/assign` with 403
 - [ ] Mechanic Start Job still auto-claims an unassigned job (regression-check with BACK-2-016)
+
+---
+
+## BACK-2-024 · Estimate Dialog — Responsive Layout on Mobile Portrait
+
+**Priority:** 🟡 Medium (mobile-first rule; advisors quote from phones/tablets too)
+**Area:** `apps/desktop/src/features/repair/components/EstimateBuilder.tsx` (line-item rows + dialog width)
+**Origin:** Owner found on mobile 2026-07-07 — the estimate dialog doesn't fit portrait width; the
+user must swipe left/right to see each side.
+
+**Confirmed cause:**
+Each line item is a single flex row: type icon + description + fixed-width **Qty (w-14) + Unit
+(w-16) + Price (w-24) + line total (w-24)** + delete button ≈ 400px of fixed width before the
+description gets any room — overflows a 360–430px portrait viewport (dialog is `max-w-2xl`).
+
+**Proposed handling (make it as responsive as possible):**
+- **Small screens: two-row line layout** — row 1: type icon + full-width Description + delete;
+  row 2: Qty · Unit · Price side by side with the computed line total right-aligned. (Effectively a
+  compact card per line.) Desktop keeps the current single-row table feel via `sm:`/`md:` classes.
+- Consider rendering the whole dialog **full-screen (sheet-style) on small viewports** — estimates
+  are the app's densest form and benefit from every pixel; totals/discount section stays pinned
+  reachable.
+- Discount row (₱/% toggle + input) and Senior/PWD row should wrap cleanly too.
+- **Audit sibling dialogs** for the same fixed-width overflow while at it: DiscountsDialog rows,
+  inventory Item dialog (`grid-cols-3`), Adjust Stock — fix any that fail at 360px.
+
+**Acceptance Criteria:**
+- [ ] At 360px portrait: no horizontal scrolling anywhere in the estimate dialog; all fields
+      visible and usable (≥44px touch targets)
+- [ ] Line totals + subtotal/discount/senior/tax/total all visible without sideways swiping
+- [ ] Desktop layout keeps the current comfortable single-row style
+- [ ] Sibling dialogs verified/fixed at 360px
+- [ ] Verified on a real phone in portrait
 
 ---
 
