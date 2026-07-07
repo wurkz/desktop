@@ -1,6 +1,6 @@
 # Phase 2 Backlog — Repair Module
 
-> **Status:** Thirteen open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation), BACK-2-018 (Appearance -> Settings), BACK-2-019 (mobile one-row KPI strip), BACK-2-020 (billing actions staff-only), BACK-2-021 (case-insensitive usernames), BACK-2-022 (slide-to-confirm on actions), BACK-2-023 (assign staff-only), BACK-2-024 (responsive estimate dialog). Everything else complete — core loop,
+> **Status:** Fourteen open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation), BACK-2-018 (Appearance -> Settings), BACK-2-019 (mobile one-row KPI strip), BACK-2-020 (billing actions staff-only), BACK-2-021 (case-insensitive usernames), BACK-2-022 (slide-to-confirm on actions), BACK-2-023 (assign staff-only), BACK-2-024 (responsive estimate dialog), BACK-2-025 (dyslexia-friendly mode). Everything else complete — core loop,
 > asset detail/edit/soft-delete, lightweight bookings, photos + note threads, role-based Jobs views,
 > Start Job + timing, cancel, discounts. Completed items live in [`phase-2-completed.md`](./phase-2-completed.md).
 > **Scope:** Asset Management, Job Orders, Service History, Mechanic Views, Billing
@@ -426,6 +426,43 @@ description gets any room — overflows a 360–430px portrait viewport (dialog 
 - [ ] Desktop layout keeps the current comfortable single-row style
 - [ ] Sibling dialogs verified/fixed at 360px
 - [ ] Verified on a real phone in portrait
+
+---
+
+## BACK-2-025 · Accessibility — Dyslexia-Friendly Mode Toggle
+
+**Priority:** 🟢 Low-Medium (accessibility; cheap goodwill with real users)
+**Area:** Settings (Appearance section — pairs with BACK-2-018), global styles/theme plumbing
+**Origin:** Owner request 2026-07-07.
+
+**Description:**
+Add a user-facing toggle for a **dyslexia-friendly reading mode**. When enabled, the app switches
+to a dyslexia-friendly presentation:
+- A dyslexia-friendly **typeface** — candidates: **OpenDyslexic** (the classic, distinctive weighted
+  bottoms), **Lexend** or **Atkinson Hyperlegible** (more conventional-looking, strong legibility
+  research, small files). All are open-licensed (SIL OFL).
+- Increased **letter/word spacing** and **line height**; avoid justified text.
+
+**Implementation notes:**
+- **Bundle the font locally** (strict local-first — no CDN/Google Fonts fetch); ship the woff2 in
+  the app bundle. Mind installer size (Lexend/Atkinson ≈ tens of KB per weight; OpenDyslexic larger).
+- Mechanism: a class on `<html>` (e.g. `.dyslexic`) that overrides `font-family` + spacing via CSS
+  variables — same pattern as dark mode. Persist like the theme (localStorage per device).
+- **Per-device vs per-user:** theme is per-device today; a shared front-desk PC means one person's
+  toggle affects others. Per-device (simple, consistent with theme) vs per-user preference storage —
+  decide at build; per-device is the pragmatic default.
+- **Placement + roles:** lives in the **Appearance** section (moving to Settings per BACK-2-018) and
+  must be usable by **all roles** including mechanics (it's a personal accessibility preference, not
+  shop config — must not be caught by the Settings admin read-only gating). Same interplay as the
+  theme switcher.
+- Out of scope: the PDF printout keeps its current font (customer-facing document, unaffected).
+
+**Acceptance Criteria:**
+- [ ] Toggle in Settings/Appearance, available to every role, persisted across restarts
+- [ ] Enabled: app-wide dyslexia-friendly font + adjusted letter/word spacing and line height
+- [ ] Works fully offline (font bundled, no network fetch)
+- [ ] Layout survives the metric change (spot-check dense views: estimate dialog, tables, PIN boxes)
+- [ ] Off by default; toggling back restores the standard look exactly
 
 ---
 
