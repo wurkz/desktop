@@ -1,6 +1,6 @@
 # Phase 2 Backlog — Repair Module
 
-> **Status:** One open item (BACK-2-012, date filter on Jobs). Everything else complete — core loop,
+> **Status:** Three open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate). Everything else complete — core loop,
 > asset detail/edit/soft-delete, lightweight bookings, photos + note threads, role-based Jobs views,
 > Start Job + timing, cancel, discounts. Completed items live in [`phase-2-completed.md`](./phase-2-completed.md).
 > **Scope:** Asset Management, Job Orders, Service History, Mechanic Views, Billing
@@ -40,6 +40,42 @@ This Month / All / Custom range).
   always show regardless of date, or keep the default strict (owner leaned strict "today").
 - **Client vs. server filtering:** client-side over `scope=all` is simplest at shop scale;
   `?from=&to=` params on `GET /api/orders` scale better long-term.
+
+---
+
+## BACK-2-014 · Print Job Order at Estimate Stage (for customer signature)
+
+**Priority:** 🟡 Medium (completes the paper-signature approval workflow shops already use)
+**Area:** `apps/desktop/src/pages/job-ticket.tsx` (Estimate card), `apps/desktop/src/lib/invoice-pdf.ts`,
+optionally `ApprovalDialog.tsx`
+**Origin:** Owner request 2026-07-07.
+
+**Description:**
+While a ticket is at the **estimate** stage (the "Mark Approved" button is showing), add a
+**print / download PDF** action so the advisor can hand the customer a printed Job Order to sign
+(the existing layout already carries the **"Prepared by" / "Conformed"** signature lines and the
+T&C block — it was designed for exactly this). Flow: print → customer signs the *Conformed* line →
+advisor/admin taps **Mark Approved**.
+
+**Current gap:** `generateInvoicePdf` works for any ticket, but the button only renders on the
+Billing card (status `done`/`paid`). Nothing exposes it at the estimate stage.
+
+**Build notes / considerations:**
+- Reuse `generateInvoicePdf` as-is; the receipt line prints "(unbilled)" pre-billing, which is fine.
+  Optionally annotate the printout at this stage (e.g. "FOR CUSTOMER APPROVAL" under the title) so a
+  signed estimate copy isn't confused with the final billed document.
+- Button placement: the Estimate card header (next to Create/Edit), shown when items exist and
+  status is `triage`/`estimate` (perhaps also `approved`+ for reprints — decide at build).
+- **ApprovalDialog:** consider adding a **"Signed job order"** method alongside In person / Phone /
+  Message, so the approval record reflects the paper-signature flow.
+- "Print" = the existing PDF download (D9 — no direct print dialog); the shop prints the PDF.
+
+**Acceptance Criteria:**
+- [ ] A ticket at `estimate` (with line items) offers a Job Order PDF download near "Mark Approved"
+- [ ] The generated document includes line items, totals, T&C, and the Conformed signature line
+      (already in the layout — regression-check)
+- [ ] After printing/signing, Mark Approved works unchanged (record who + how)
+- [ ] Optional: "Signed job order" approval method; optional stage annotation on the printout
 
 ---
 

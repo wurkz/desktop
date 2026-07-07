@@ -29,7 +29,7 @@
 |---|---|---|---|
 | Phase 0 — v1 Ship Blockers & Foundation | [backlog](./phase-0-ship-blockers.md) | [completed](./phase-0-completed.md) | ~99% (12 of 13 ✅ — only online-enforcement remains, deferred fast-follow) |
 | Phase 1 — Core Kernel | [backlog](./phase-1-backlog.md) | [completed](./phase-1-completed.md) | ~85% (settings, **data-driven asset types**, **demo seeder/reset** done; remaining all deferred: schema split, module registry, user-mgmt UI, hardware IO) |
-| Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~98% (everything shipped; 2 open: **BACK-2-012** Jobs date filter (default today), **BACK-2-013** photo-note mobile keyboard UX) |
+| Phase 2 — Repair Module | [backlog](./phase-2-backlog.md) | [completed](./phase-2-completed.md) | ~95% (everything shipped; 3 open: **BACK-2-012** Jobs date filter, **BACK-2-013** photo-note keyboard UX, **BACK-2-014** print job order at estimate for signature) |
 | Phase 3 — Commerce Module | [backlog](./phase-3-backlog.md) | [completed](./phase-3-completed.md) | ~75% (**inventory management page + stock adjustments + CSV imports (parts & customers) + stock deduction** done; 001 superseded by D23; remaining: payment methods 007 (deferred) + **BACK-3-009 VAT-inclusive pricing option**; 008 mostly done) |
 | Phase 4 — Cloud Link | [backlog](./phase-4-backlog.md) | [completed](./phase-4-completed.md) | ~10% (8 items remaining) |
 
