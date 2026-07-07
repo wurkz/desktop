@@ -1,6 +1,6 @@
 # Phase 2 Backlog — Repair Module
 
-> **Status:** Five open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only). Everything else complete — core loop,
+> **Status:** Six open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation). Everything else complete — core loop,
 > asset detail/edit/soft-delete, lightweight bookings, photos + note threads, role-based Jobs views,
 > Start Job + timing, cancel, discounts. Completed items live in [`phase-2-completed.md`](./phase-2-completed.md).
 > **Scope:** Asset Management, Job Orders, Service History, Mechanic Views, Billing
@@ -152,6 +152,39 @@ gating today, and the server accepts any authenticated user.
 - [ ] Mechanic sees and can use Start Job unchanged (incl. auto-claim when unassigned)
 - [ ] Server rejects non-mechanic `POST /:id/start` with 403 (can't be bypassed)
 - [ ] Decision recorded for checklist/Mark-as-Done gating and for on-behalf start
+
+---
+
+## BACK-2-017 · Job Ticket Back Button Goes to Repair Shop Instead of Where You Came From
+
+**Priority:** 🟡 Medium (navigation bug; extra-wrong for mechanics, who shouldn't land on Repair
+Shop at all per BACK-2-015)
+**Area:** `apps/desktop/src/pages/job-ticket.tsx` (header back button; `job-ticket.tsx:123`),
+same treatment for `asset-detail.tsx`
+**Origin:** Owner found while testing as a mechanic, 2026-07-07.
+
+**Bug:**
+The ticket header's back arrow is hardcoded to `navigate("/repair")`. A mechanic who goes
+**My Jobs → job ticket → back** lands on the **Repair Shop** page instead of back on My Jobs.
+The same wrongness hits every other entry path: staff **Jobs list → ticket → back** → Repair Shop;
+**asset detail service history → ticket → back** → Repair Shop.
+
+**Proposed fix:**
+- Use **history back** (`navigate(-1)`) so "back" returns to wherever the user actually came from —
+  fixes all entry paths at once.
+- **Fallback for deep links / no history** (e.g. ticket opened directly after login): go somewhere
+  role-appropriate — mechanic → `/jobs` (My Jobs), staff → `/jobs` or the dashboard. (React Router:
+  `location.key === "default"` detects a fresh entry.)
+- Apply the same pattern to **asset-detail**'s back button (currently also hardcoded `/repair` —
+  usually correct today since assets are reached from the Repair search, but wrong once tickets
+  link to asset history per BACK-2-015's nuance).
+
+**Acceptance Criteria:**
+- [ ] Mechanic: My Jobs → ticket → back returns to **My Jobs**
+- [ ] Staff: Jobs → ticket → back returns to **Jobs** (filters ideally intact)
+- [ ] Repair search → ticket → back returns to **Repair Shop** (current behavior preserved for that path)
+- [ ] Asset detail → history → ticket → back returns to the **asset detail**
+- [ ] Deep-linked ticket (no history) falls back sensibly by role (mechanic → My Jobs)
 
 ---
 
