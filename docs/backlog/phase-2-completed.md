@@ -658,3 +658,45 @@ composes with status chips, mechanic My Jobs unaffected).
 
 **Key files:**
 - `apps/desktop/src/pages/jobs.tsx`
+
+## ✅ BACK-2-C021 · Photo Notes — Mobile Keyboard Covers the Input
+
+**Completed:** 2026-07-07
+**Original Backlog ID:** BACK-2-013
+
+**Chosen approach:** #1 **Keyboard-aware viewport handling** (via the `visualViewport` API),
+scoped entirely to `TicketPhotos.tsx` — no change to the shared `Dialog` component and no global
+viewport-meta change.
+
+**What was implemented:**
+- Added a `useKeyboardViewport(active)` hook that, while the photo dialog is open, listens to
+  `window.visualViewport` `resize`/`scroll` events and reports the visible viewport's `top`
+  offset, `height`, and the keyboard `inset` (`window.innerHeight − vv.height − vv.offsetTop`).
+  Returns `null` when inactive or when `visualViewport` is unsupported (graceful desktop no-op).
+- When the keyboard is up (`inset > 120px`, a threshold that ignores browser-chrome jitter), the
+  photo `DialogContent` gets an inline `style` that **pins it to the top of the visible viewport**
+  (`top: vv.offsetTop + 8`, `transform: translateX(-50%)`) and **caps its height** to the visible
+  area (`maxHeight: vv.height − 16`). Inline style overrides the dialog's default centered
+  `top-[50%]/translate-y-[-50%]/max-h-[90vh]`. The `DialogContent` is already `overflow-y-auto`,
+  so the note thread scrolls within the shortened dialog.
+- On note-input **focus**, a short (300ms) deferred `scrollIntoView({ block: "center" })` brings
+  the field into view after the keyboard has animated and the viewport has resized.
+
+**Design decisions / trade-offs:**
+- Kept the fix **local to the component** — the centered `Dialog` default and all other dialogs
+  are untouched, so there's zero desktop regression (on desktop `inset` stays 0 → no style
+  override, dialog stays centered).
+- **Did not** add `<meta name="viewport" content="… interactive-widget=resizes-content">`: it
+  would change keyboard/layout behavior app-wide for every dialog. Noted as an optional future
+  global improvement rather than bundled into this fix.
+
+**Verification:** `tsc --noEmit` clean; owner confirmed on a real phone over LAN
+(`TAURI_DEV_HOST` dev build) that focusing the note field now keeps it fully visible above the
+on-screen keyboard.
+
+⚠️ Not separately verified: iOS Safari specifically (owner's on-device check confirmed the fix;
+the `visualViewport`-offsetTop handling is written to cover iOS's page-scroll-on-focus behavior,
+but a dedicated iOS Safari pass wasn't recorded).
+
+**Key files:**
+- `apps/desktop/src/features/repair/components/TicketPhotos.tsx`

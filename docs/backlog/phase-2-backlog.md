@@ -1,6 +1,6 @@
 # Phase 2 Backlog — Repair Module
 
-> **Status:** Thirteen open items — BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation), BACK-2-018 (Appearance -> Settings), BACK-2-019 (mobile one-row KPI strip), BACK-2-020 (billing actions staff-only), BACK-2-021 (case-insensitive usernames), BACK-2-022 (slide-to-confirm on actions), BACK-2-023 (assign staff-only), BACK-2-024 (responsive estimate dialog), BACK-2-025 (dyslexia-friendly mode). Everything else complete — core loop,
+> **Status:** Twelve open items — BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation), BACK-2-018 (Appearance -> Settings), BACK-2-019 (mobile one-row KPI strip), BACK-2-020 (billing actions staff-only), BACK-2-021 (case-insensitive usernames), BACK-2-022 (slide-to-confirm on actions), BACK-2-023 (assign staff-only), BACK-2-024 (responsive estimate dialog), BACK-2-025 (dyslexia-friendly mode). Everything else complete — core loop,
 > asset detail/edit/soft-delete, lightweight bookings, photos + note threads, role-based Jobs views,
 > Start Job + timing, cancel, discounts. Completed items live in [`phase-2-completed.md`](./phase-2-completed.md).
 > **Scope:** Asset Management, Job Orders, Service History, Mechanic Views, Billing
@@ -433,40 +433,5 @@ to a dyslexia-friendly presentation:
 - [ ] Works fully offline (font bundled, no network fetch)
 - [ ] Layout survives the metric change (spot-check dense views: estimate dialog, tables, PIN boxes)
 - [ ] Off by default; toggling back restores the standard look exactly
-
----
-
-## BACK-2-013 · Photo Notes — Mobile Keyboard Covers the Input
-
-**Priority:** 🟡 Medium (mobile UX bug — the phone flow is a core selling point)
-**Area:** `apps/desktop/src/features/repair/components/TicketPhotos.tsx` (photo dialog + Notes thread)
-**Origin:** Owner found while live-testing on a phone, 2026-07-07.
-
-**Problem:**
-In the photo detail dialog, when the **"Add a note…"** field gets focus on a phone, the on-screen
-keyboard slides up **over the input** — the user can't see what they're typing. The dialog is
-vertically packed (photo image + note thread + input + delete row), so the input sits near the
-bottom of the viewport, exactly where the keyboard appears.
-
-**Goal:** find a good mobile UX so the input (and ideally the newest notes) stay visible above the
-keyboard while typing. Explore, prototype on a real phone, and pick — candidates:
-
-1. **Keyboard-aware viewport handling** — use the `visualViewport` API (resize/scroll events) to
-   add bottom padding / translate the dialog so the focused input stays above the keyboard; plus
-   `scrollIntoView({block: "center"})` on focus. Also evaluate the
-   `<meta name="viewport" content="... interactive-widget=resizes-content">` option (Chrome
-   Android) so the layout viewport shrinks instead of the keyboard overlaying.
-2. **Compact-on-focus layout** — when the note input is focused on a small screen, shrink the
-   photo (thumbnail-height) and cap the thread's height so the input naturally sits high enough.
-3. **Bottom-sheet compose mode** — tapping "Add a note" opens a minimal compose bar/sheet (input +
-   send only, photo hidden) — the classic chat-app pattern; most work, best-feeling result.
-
-**Acceptance Criteria:**
-- [ ] On a real phone (LAN browser), focusing the note field keeps the field **fully visible**
-      above the on-screen keyboard while typing
-- [ ] The most recent note (or the thread's tail) remains visible where feasible
-- [ ] No regression on desktop (dialog unchanged there)
-- [ ] Verify on both Android Chrome and iOS Safari if available (their keyboard/viewport
-      behaviors differ — `visualViewport` support/quirks vary)
 
 ---

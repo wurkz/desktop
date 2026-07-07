@@ -26,6 +26,33 @@ function fmt(ms: number): string {
     return new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
+// BACK-2-013: track the on-screen keyboard via the visualViewport API so the photo
+// dialog can stay above it. Returns the visible viewport's top offset + height and the
+// keyboard inset (px the keyboard overlaps the layout viewport), or null when there is
+// no keyboard / no visualViewport support. Only listens while `active`.
+function useKeyboardViewport(active: boolean): { inset: number; top: number; height: number } | null {
+    const [vp, setVp] = useState<{ inset: number; top: number; height: number } | null>(null);
+    useEffect(() => {
+        const vv = typeof window !== "undefined" ? window.visualViewport : null;
+        if (!active || !vv) {
+            setVp(null);
+            return;
+        }
+        const update = () => {
+            const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+            setVp({ inset, top: vv.offsetTop, height: vv.height });
+        };
+        update();
+        vv.addEventListener("resize", update);
+        vv.addEventListener("scroll", update);
+        return () => {
+            vv.removeEventListener("resize", update);
+            vv.removeEventListener("scroll", update);
+        };
+    }, [active]);
+    return vp;
+}
+
 // BACK-2-011: photos + append-only note thread on a job ticket. Add photo/note = any
 // staff (incl. mechanics); delete photo = advisor/admin only.
 export function TicketPhotos({ orderId }: { orderId: string }) {
@@ -45,6 +72,17 @@ export function TicketPhotos({ orderId }: { orderId: string }) {
     useEffect(() => refresh(), [refresh]);
 
     const open = openId ? photos.find((p) => p.id === openId) ?? null : null;
+
+    // Keyboard-aware dialog: while a photo is open and the on-screen keyboard is up, pin the
+    // dialog to the top of the *visible* viewport and cap its height to what's visible, so the
+    // note input never hides behind the keyboard. Inline style overrides the centered defaults.
+    const vp = useKeyboardViewport(open !== null);
+    const kbOpen = vp !== null && vp.inset > 120; // real keyboards are ~250px+; ignore UI-chrome jitter
+    const noteInputRef = useRef<HTMLInputElement>(null);
+    const dialogStyle: React.CSSProperties | undefined =
+        kbOpen && vp
+            ? { top: `${vp.top + 8}px`, transform: "translateX(-50%)", maxHeight: `${vp.height - 16}px` }
+            : undefined;
 
     const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -123,7 +161,7 @@ export function TicketPhotos({ orderId }: { orderId: string }) {
             </CardContent>
 
             <Dialog open={open !== null} onOpenChange={(o) => { if (!o) setOpenId(null); }}>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="max-w-lg" style={dialogStyle}>
                     <DialogHeader>
                         <DialogTitle>Photo</DialogTitle>
                     </DialogHeader>
@@ -152,10 +190,15 @@ export function TicketPhotos({ orderId }: { orderId: string }) {
                                 )}
                                 <div className="flex gap-2">
                                     <input
+                                        ref={noteInputRef}
                                         className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         placeholder="Add a note…"
                                         value={noteText}
                                         onChange={(e) => setNoteText(e.target.value)}
+                                        onFocus={() => {
+                                            // Let the keyboard animate + viewport resize, then bring the input into view.
+                                            setTimeout(() => noteInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+                                        }}
                                         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitNote(); } }}
                                     />
                                     <Button size="icon" disabled={busy || !noteText.trim()} onClick={submitNote}>
