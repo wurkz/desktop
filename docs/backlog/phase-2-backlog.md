@@ -1,6 +1,6 @@
 # Phase 2 Backlog — Repair Module
 
-> **Status:** Four open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating). Everything else complete — core loop,
+> **Status:** Five open items — BACK-2-012 (Jobs date filter), BACK-2-013 (photo-note keyboard UX), BACK-2-014 (print job order at estimate), BACK-2-015 (mechanic dashboard cleanup + backup API gating), BACK-2-016 (Start Job mechanic-only). Everything else complete — core loop,
 > asset detail/edit/soft-delete, lightweight bookings, photos + note threads, role-based Jobs views,
 > Start Job + timing, cancel, discounts. Completed items live in [`phase-2-completed.md`](./phase-2-completed.md).
 > **Scope:** Asset Management, Job Orders, Service History, Mechanic Views, Billing
@@ -112,6 +112,46 @@ theme switcher. Clean and focused on their work.
       read-only license gate (D24)
 - [ ] Decide + implement: mechanic path to asset service history from the job ticket (or explicitly
       defer it)
+
+---
+
+## BACK-2-016 · "Start Job" Should Be a Mechanic-Only Action
+
+**Priority:** 🟡 Medium (role correctness + protects the job-timing data)
+**Area:** `apps/desktop/src/pages/job-ticket.tsx` (Work card), `start_order` in `api_data.rs`
+**Origin:** Owner question 2026-07-07 — after approval the ticket shows "Start Job" to advisors and
+admins too; owner believes it should be mechanic-only. **Confirmed correct:** the button has no role
+gating today, and the server accepts any authenticated user.
+
+**Why mechanic-only is right:**
+- `started_at` exists to measure **mechanic work time** (BACK-2-C018's future report). A staff-pressed
+  Start begins the clock with nobody working — corrupting the metric — and can put a job in
+  `in_progress` with **no assignee** (auto-claim only fires for mechanics).
+- Start is the mechanic's explicit "I'm working on this now" declaration.
+
+**Proposed handling:**
+- **UI:** render the "Start Job" button only for `role === "mechanic"`. For admin/advisor on an
+  approved ticket, show a passive line instead — e.g. *"Waiting for {assigned mechanic || 'a
+  mechanic'} to start"* — with the existing **Assign** action still available (that's the staff
+  lever at this stage).
+- **Server (authoritative):** `POST /api/orders/:id/start` → 403 unless the actor is a mechanic
+  (auto-claim behavior unchanged).
+
+**Open questions (decide at build time):**
+- **On-behalf start:** in a shop where the mechanic has no phone, the advisor may genuinely need to
+  start a job for them (e.g. a "Start as {mechanic}" action tied to the assignment, which would keep
+  started_at meaningful by requiring an assignee). Owner's stated lean: strict mechanic-only.
+- **Consistency of the execution card:** the work **checklist ticking** and **"Mark as Done"** are
+  equally un-gated today. Same logic suggests mechanic-only — but staff may need to correct a
+  mis-ticked item or close a job when the mechanic forgot. Decide: gate all execution actions, or
+  Start only.
+
+**Acceptance Criteria:**
+- [ ] Advisor/admin no longer see "Start Job" on an approved ticket (see a waiting hint instead;
+      Assign still available)
+- [ ] Mechanic sees and can use Start Job unchanged (incl. auto-claim when unassigned)
+- [ ] Server rejects non-mechanic `POST /:id/start` with 403 (can't be bypassed)
+- [ ] Decision recorded for checklist/Mark-as-Done gating and for on-behalf start
 
 ---
 
