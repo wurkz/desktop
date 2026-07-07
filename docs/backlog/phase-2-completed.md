@@ -718,6 +718,12 @@ but a dedicated iOS Safari pass wasn't recorded).
   stamp.
 - Added **"Signed job order"** as a fourth approval method in `ApprovalDialog` (grid switched from
   3 to 2 columns to fit), so the approval record reflects the paper-signature flow.
+- **Filename** now includes the asset's **plate number** (falling back to serial/IMEI/make-model):
+  `<doc-title>-<plate>-<receipt|id>.pdf`, so downloaded job orders are easy to find.
+- Added a small **app-wide toast system** (`stores/toast.ts` + `components/toaster.tsx`, mounted in
+  `App`) with a **"Saved to Downloads · <filename>"** confirmation after every PDF download — the
+  Tauri WebView2 window saves silently with no visible prompt otherwise. Toasts are tinted per
+  variant (success/error/info) and reusable across the app.
 
 **Bug fixed along the way — peso sign corrupted every PDF amount:**
 - `formatMoney` prefixes the configured currency symbol; with the shop's `₱` (U+20B1), jsPDF's
@@ -744,3 +750,4 @@ Prepared-by/Conformed lines.
 - `apps/desktop/src/lib/invoice-pdf.ts` (`forApproval` stamp + embedded-font wiring)
 - `apps/desktop/src/lib/pdf-font.ts` (new — embedded Noto Sans subset + `registerPdfFont`)
 - `apps/desktop/src/features/repair/components/ApprovalDialog.tsx` ("Signed job order" method)
+- `apps/desktop/src/stores/toast.ts`, `apps/desktop/src/components/toaster.tsx` (new — toast system), `apps/desktop/src/App.tsx` (mount)

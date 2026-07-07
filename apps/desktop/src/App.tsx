@@ -5,6 +5,7 @@ import { useAuthStore } from "./stores/auth";
 import { useAppConfigStore } from "./stores/app-config";
 import { useLicenseStore } from "./stores/license";
 import { LicenseArea } from "./components/license-area";
+import { Toaster } from "./components/toaster";
 import SetupPage from "./pages/setup";
 import LoginPage from "./pages/login";
 import DashboardPage from "./pages/dashboard";
@@ -91,6 +92,7 @@ function App() {
             )}
           </Routes>
           </HashRouter>
+          <Toaster />
         </>
       )}
     </ThemeProvider>

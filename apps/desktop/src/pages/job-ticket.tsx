@@ -17,6 +17,7 @@ import { TicketPhotos } from "../features/repair/components/TicketPhotos";
 import { DiscountsDialog } from "../features/repair/components/DiscountsDialog";
 import { useAppConfigStore } from "../stores/app-config";
 import { useAuthStore } from "../stores/auth";
+import { toast } from "../stores/toast";
 
 function assetTitle(asset?: JobTicket["asset"]): string {
     if (!asset) return "Unknown asset";
@@ -96,12 +97,21 @@ export default function JobTicketPage() {
             console.error(e);
         }
     };
-    // Download the Job Order PDF. Pre-approval (triage/estimate) copies are annotated
-    // "FOR CUSTOMER APPROVAL" so the signed estimate isn't confused with the billed invoice.
+    // Download a PDF (Job Order or Invoice) and confirm where it landed. Pre-approval
+    // (triage/estimate) copies are annotated "FOR CUSTOMER APPROVAL" so the signed estimate
+    // isn't confused with the billed invoice.
+    const downloadPdf = (forApproval: boolean) => {
+        if (!ticket) return;
+        generateInvoicePdf(ticket, config, { forApproval })
+            .then((filename) => toast(`Saved to Downloads · ${filename}`, "success"))
+            .catch((e) => {
+                console.error(e);
+                toast("Couldn't generate the PDF.", "error");
+            });
+    };
     const printJobOrder = () => {
         if (!ticket) return;
-        const preApproval = ticket.status === "triage" || ticket.status === "estimate";
-        void generateInvoicePdf(ticket, config, { forApproval: preApproval }).catch(console.error);
+        downloadPdf(ticket.status === "triage" || ticket.status === "estimate");
     };
     const cancelJob = async () => {
         if (!ticket) return;
@@ -367,7 +377,7 @@ export default function JobTicketPage() {
                                         </div>
                                     )}
                                     <div className="flex gap-2">
-                                        <Button variant="outline" className="flex-1" onClick={() => { void generateInvoicePdf(ticket, config).catch(console.error); }}>
+                                        <Button variant="outline" className="flex-1" onClick={() => downloadPdf(false)}>
                                             <FileText className="h-4 w-4 mr-1" /> Invoice PDF
                                         </Button>
                                         {ticket.status === "done" && isStaff && (

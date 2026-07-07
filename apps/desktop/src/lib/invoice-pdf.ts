@@ -9,11 +9,12 @@ import { registerPdfFont, PDF_FONT_FAMILY } from "./pdf-font";
 // print). Modeled on a BIR-style manual job order (PH market): configurable title, shop
 // identity (proprietor / VAT status / TIN), a UNIT column, a terms & conditions block, and
 // Prepared-by / Conformed signature lines. Blank fields are never printed (no empty lines).
+// Generates + downloads the PDF and returns the saved filename (for a "saved to Downloads" toast).
 export async function generateInvoicePdf(
     ticket: JobTicket,
     config: AppConfig | null,
     opts?: { forApproval?: boolean }
-) {
+): Promise<string> {
     const currency = config?.currency_symbol ?? "";
     const doc = new jsPDF();
     // Embed a Unicode font so non-Latin-1 currency symbols (e.g. ₱) render correctly;
@@ -180,5 +181,16 @@ export async function generateInvoicePdf(
     doc.text("Prepared by", left, y);
     doc.text("Conformed", right - sigW, y);
 
-    doc.save(`${(config?.document_title || "invoice").toLowerCase().replace(/\s+/g, "-")}-${ticket.receipt_number ?? ticket.id.slice(0, 8)}.pdf`);
+    // Filename: <doc-title>-<plate/serial/imei>-<receipt or id>.pdf. The asset token
+    // (plate number preferred) makes downloaded job orders easy to find in the shop.
+    const base = (config?.document_title || "invoice").toLowerCase().replace(/\s+/g, "-");
+    const assetToken = String(s.plateNumber || s.serialNumber || s.imei || [s.make, s.model].filter(Boolean).join("-") || "")
+        .trim()
+        .replace(/[^\w-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .toLowerCase();
+    const ref = ticket.receipt_number ?? ticket.id.slice(0, 8);
+    const filename = `${[base, assetToken, ref].filter(Boolean).join("-")}.pdf`;
+    doc.save(filename);
+    return filename;
 }
