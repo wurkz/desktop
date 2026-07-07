@@ -25,6 +25,59 @@ function elapsed(ms: number): string {
 
 const STATUS_ORDER: OrderStatus[] = ["triage", "estimate", "approved", "in_progress", "done", "paid", "cancelled"];
 
+type DatePreset = "today" | "week" | "month" | "all" | "custom";
+
+const DATE_PRESETS: { key: DatePreset; label: string }[] = [
+    { key: "today", label: "Today" },
+    { key: "week", label: "This Week" },
+    { key: "month", label: "This Month" },
+    { key: "all", label: "All" },
+    { key: "custom", label: "Custom" },
+];
+
+// Local start-of-day (ms) for a Date.
+function startOfDay(d: Date): number {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+// Parse a yyyy-mm-dd string as a local date; null if empty/invalid.
+function parseDateInput(v: string): Date | null {
+    if (!v) return null;
+    const [y, m, d] = v.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+}
+
+// Resolve a preset (+ optional custom inputs) to an inclusive [from, to] ms range,
+// or null for "no date filter" (All).
+function resolveRange(preset: DatePreset, customFrom: string, customTo: string): [number, number] | null {
+    const now = new Date();
+    const dayMs = 86400000;
+    switch (preset) {
+        case "all":
+            return null;
+        case "today":
+            return [startOfDay(now), startOfDay(now) + dayMs - 1];
+        case "week": {
+            // Calendar week starting Monday, through end of today.
+            const dow = (now.getDay() + 6) % 7; // 0 = Monday
+            return [startOfDay(now) - dow * dayMs, startOfDay(now) + dayMs - 1];
+        }
+        case "month": {
+            const first = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+            return [first, startOfDay(now) + dayMs - 1];
+        }
+        case "custom": {
+            const from = parseDateInput(customFrom);
+            const to = parseDateInput(customTo);
+            if (!from && !to) return null;
+            const lo = from ? startOfDay(from) : 0;
+            const hi = to ? startOfDay(to) + dayMs - 1 : Number.MAX_SAFE_INTEGER;
+            return [lo, hi];
+        }
+    }
+}
+
 export default function JobsPage() {
     const navigate = useNavigate();
     const role = useAuthStore((s) => s.user?.role);
@@ -35,6 +88,10 @@ export default function JobsPage() {
     const [jobs, setJobs] = useState<JobSummary[]>([]);
     const [loaded, setLoaded] = useState(false);
     const [filter, setFilter] = useState<OrderStatus | "all">("all");
+    // Staff Jobs defaults to today only; the mechanic queue is never date-filtered.
+    const [datePreset, setDatePreset] = useState<DatePreset>("today");
+    const [customFrom, setCustomFrom] = useState("");
+    const [customTo, setCustomTo] = useState("");
 
     useEffect(() => {
         (mine ? listJobs(true) : listAllJobs())
@@ -45,7 +102,18 @@ export default function JobsPage() {
 
     // Status filter chips (staff view) — only statuses that are actually present.
     const presentStatuses = useMemo(() => STATUS_ORDER.filter((st) => jobs.some((j) => j.status === st)), [jobs]);
-    const shown = filter === "all" ? jobs : jobs.filter((j) => j.status === filter);
+
+    // Date range applies to the staff view only (mechanics see their live work queue as-is).
+    const dateRange = useMemo(
+        () => (mine ? null : resolveRange(datePreset, customFrom, customTo)),
+        [mine, datePreset, customFrom, customTo]
+    );
+
+    const shown = jobs.filter((j) => {
+        if (filter !== "all" && j.status !== filter) return false;
+        if (dateRange && (j.created_at < dateRange[0] || j.created_at > dateRange[1])) return false;
+        return true;
+    });
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -57,6 +125,46 @@ export default function JobsPage() {
             </header>
 
             <main className="p-4 max-w-md mx-auto space-y-3">
+                {!mine && (
+                    <div className="space-y-2">
+                        <div className="flex flex-wrap gap-1.5">
+                            {DATE_PRESETS.map((p) => (
+                                <button
+                                    key={p.key}
+                                    onClick={() => setDatePreset(p.key)}
+                                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                                        datePreset === p.key
+                                            ? "bg-primary text-primary-foreground border-primary"
+                                            : "hover:bg-muted"
+                                    }`}
+                                >
+                                    {p.label}
+                                </button>
+                            ))}
+                        </div>
+                        {datePreset === "custom" && (
+                            <div className="flex items-center gap-2 text-xs">
+                                <input
+                                    type="date"
+                                    value={customFrom}
+                                    max={customTo || undefined}
+                                    onChange={(e) => setCustomFrom(e.target.value)}
+                                    className="flex-1 rounded-md border px-2 py-1 bg-background"
+                                    aria-label="From date"
+                                />
+                                <span className="text-muted-foreground">to</span>
+                                <input
+                                    type="date"
+                                    value={customTo}
+                                    min={customFrom || undefined}
+                                    onChange={(e) => setCustomTo(e.target.value)}
+                                    className="flex-1 rounded-md border px-2 py-1 bg-background"
+                                    aria-label="To date"
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
                 {!mine && jobs.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                         {(["all", ...presentStatuses] as const).map((st) => (
@@ -74,9 +182,23 @@ export default function JobsPage() {
                 )}
 
                 {loaded && shown.length === 0 && (
-                    <p className="text-muted-foreground text-center py-10">
-                        {mine ? "No jobs assigned to you." : "No jobs yet."}
-                    </p>
+                    <div className="text-center py-10 space-y-2">
+                        <p className="text-muted-foreground">
+                            {mine
+                                ? "No jobs assigned to you."
+                                : jobs.length === 0
+                                  ? "No jobs yet."
+                                  : "No jobs in this date range."}
+                        </p>
+                        {!mine && jobs.length > 0 && datePreset !== "all" && (
+                            <button
+                                onClick={() => setDatePreset("all")}
+                                className="text-xs px-2.5 py-1 rounded-full border hover:bg-muted"
+                            >
+                                Show all dates
+                            </button>
+                        )}
+                    </div>
                 )}
 
                 {shown.map((job) => (

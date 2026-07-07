@@ -619,3 +619,42 @@ reason → "This job was cancelled." notice + reason shown + Cancel button gone.
 - `apps/desktop/src/lib/orders-api.ts` (`cancelOrder`), `apps/desktop/src/pages/job-ticket.tsx`
 
 ---
+
+## ✅ BACK-2-C020 · Jobs Page — Date Filter (default: today)
+
+**Completed:** 2026-07-07
+**Original Backlog ID:** BACK-2-012
+
+**What was implemented:**
+- Added a **date filter** to the staff **Jobs** view (`role !== mechanic`), with preset chips
+  **Today / This Week / This Month / All / Custom**, defaulting to **Today** per the owner's
+  strict-today decision.
+- **Custom** reveals a from–to native `<input type="date">` pair; the range is **inclusive** and
+  `min`/`max` are wired so the range can't be inverted. Either bound may be left open
+  (from-only ⇒ up to now; to-only ⇒ from the beginning). This satisfies both the "single date"
+  (set from=to) and "date range" acceptance criteria.
+- **Composes with the existing status chips**: `shown` applies both the status filter and the
+  date range in a single pass, so e.g. "paid" + "This Week" works.
+- **Empty state is filter-aware**: distinguishes "No jobs yet" (nothing at all) from
+  "No jobs in this date range", and shows a one-tap **Show all dates** button when a date filter
+  is hiding everything (the required one-tap widen affordance).
+- **Mechanic "My Jobs" is untouched**: `dateRange` is forced `null` when `mine`, and the date
+  preset UI only renders for staff — the active work queue is never date-filtered.
+- Ranges resolve to inclusive `[from, to]` ms bounds via local day boundaries; "This Week" is a
+  Monday-based calendar week through end of today, "This Month" is the 1st through end of today.
+
+**Design decisions / trade-offs:**
+- **Client-side filtering on `created_at`** over the existing `scope=all` fetch — the simplest
+  path at shop scale, and `JobSummary` only carries `created_at`, so no server/API change was
+  needed. (The backlog's optional `?from=&to=` server-side path was deliberately not taken.)
+- **Filters on `created_at` (intake date) only** — done/paid jobs are not matched on
+  `completed_at`; the "what did we finish today?" variant was left out of scope.
+- **Strict today-only default** (per owner): yesterday's still-open jobs drop out of the default
+  view; the All / "Show all dates" chips are the one-tap escape hatch.
+
+**Verification:** `tsc --noEmit` clean; Vite production build succeeds; launched via `tauri dev`
+and confirmed by the owner in-app (default Today, presets widen, custom range filters inclusively,
+composes with status chips, mechanic My Jobs unaffected).
+
+**Key files:**
+- `apps/desktop/src/pages/jobs.tsx`
