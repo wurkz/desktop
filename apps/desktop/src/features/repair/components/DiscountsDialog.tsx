@@ -10,7 +10,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from "@zorviz/ui";
-import { formatMoney, toCentavos, fromCentavos } from "@zorviz/core";
+import { formatMoney, toCentavos, fromCentavos, computeTotals } from "@zorviz/core";
 import { setDiscounts, type JobTicket } from "../../../lib/orders-api";
 import { useAppConfigStore } from "../../../stores/app-config";
 import { useConfirm } from "../../../components/confirm";
@@ -49,15 +49,23 @@ export function DiscountsDialog({ ticket, open, onOpenChange, onSaved }: Props) 
     }, [open, ticket]);
 
     const maxDiscountPct = config?.max_discount_pct ?? null;
-    const subtotal = ticket.subtotal;
+    const inclusive = config?.tax_inclusive === 1; // BACK-3-009
+    // The stored subtotal is canonical net; recompute from it (mirrors server set_discounts).
+    const net = ticket.subtotal;
     const discountInput = parseFloat(discount) || 0;
-    const discountC = discountMode === "pct" ? Math.round(subtotal * (discountInput / 100)) : toCentavos(discountInput);
-    const effectivePct = subtotal > 0 ? (discountC / subtotal) * 100 : 0;
+    const discountC = discountMode === "pct" ? Math.round(net * (discountInput / 100)) : toCentavos(discountInput);
+    const effectivePct = net > 0 ? (discountC / net) * 100 : 0;
     const overCap = maxDiscountPct != null && effectivePct > maxDiscountPct * 100 + 0.001;
     const isSenior = seniorType !== "";
-    const seniorDiscC = isSenior ? Math.round(subtotal * 0.2) : 0;
-    const tax = isSenior ? 0 : Math.round(subtotal * taxRate);
-    const total = subtotal + tax - discountC - seniorDiscC;
+    const { tax, seniorDiscount: seniorDiscC, total } = computeTotals({
+        entered: net,
+        discount: discountC,
+        senior: isSenior,
+        taxRate,
+        taxInclusive: false, // net is already canonical; VAT is embedded via net*rate
+    });
+    // Inclusive orders show a gross subtotal (net + embedded VAT) to match the customer-facing price.
+    const subtotalShown = inclusive && !isSenior ? net + tax : net;
 
     const submit = async () => {
         if (overCap) {
@@ -140,10 +148,10 @@ export function DiscountsDialog({ ticket, open, onOpenChange, onSaved }: Props) 
                     )}
 
                     <div className="border-t pt-2 space-y-1">
-                        {row("Subtotal", formatMoney(subtotal, currency))}
+                        {row("Subtotal", formatMoney(subtotalShown, currency))}
                         {discountC > 0 && row("Discount", `-${formatMoney(discountC, currency)}`)}
                         {isSenior && row("Senior/PWD Disc. (20%)", `-${formatMoney(seniorDiscC, currency)}`)}
-                        {row(isSenior ? "Tax (VAT-exempt)" : `Tax (${(taxRate * 100).toFixed(0)}%)`, formatMoney(tax, currency))}
+                        {row(isSenior ? "Tax (VAT-exempt)" : `${inclusive ? "VAT incl." : "Tax"} (${(taxRate * 100).toFixed(0)}%)`, formatMoney(tax, currency))}
                         {row("Total", formatMoney(total, currency), true)}
                     </div>
 

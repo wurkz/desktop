@@ -86,6 +86,7 @@ export interface AppConfigTable {
     document_title: Nullable<string>; // printout title; null → "Invoice"
     max_discount_pct: Nullable<number>; // cap on manual discount as a fraction (null = no cap)
     mechanic_label: Nullable<string>; // display name for the mechanic role (null → "Mechanic")
+    tax_inclusive: number; // BACK-3-009: 1 = entered prices include VAT; 0 = VAT added on top
     created_at: number;
     updated_at: number;
 }

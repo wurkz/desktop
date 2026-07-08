@@ -21,6 +21,7 @@ export interface UpdateConfigInput {
     document_title: string | null;
     max_discount_pct: number | null; // fraction; null = no cap
     mechanic_label: string | null; // display name for the mechanic role (null → "Mechanic")
+    tax_inclusive: boolean; // BACK-3-009: entered prices already include VAT
 }
 
 interface AppConfigState {

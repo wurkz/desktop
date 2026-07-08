@@ -44,6 +44,7 @@ export default function SettingsPage() {
     const [locale, setLocale] = useState("");
     const [taxRatePct, setTaxRatePct] = useState("");
     const [maxDiscountPct, setMaxDiscountPct] = useState("");
+    const [taxInclusive, setTaxInclusive] = useState(false);
     // Device
     const [deviceName, setDeviceName] = useState("");
     // Custom fields
@@ -152,6 +153,7 @@ export default function SettingsPage() {
         setLocale(config.locale ?? "");
         setTaxRatePct(config.tax_rate != null ? String(config.tax_rate * 100) : "");
         setMaxDiscountPct(config.max_discount_pct != null ? String(config.max_discount_pct * 100) : "");
+        setTaxInclusive(config.tax_inclusive === 1);
         setDeviceName(config.device_name ?? "");
         setProprietor(config.proprietor ?? "");
         setBusinessStyle(config.business_style ?? "");
@@ -207,6 +209,7 @@ export default function SettingsPage() {
                 locale: locale.trim() || "en-US",
                 tax_rate: taxRatePct.trim() ? Number(taxRatePct) / 100 : null,
                 max_discount_pct: maxDiscountPct.trim() ? Number(maxDiscountPct) / 100 : null,
+                tax_inclusive: taxInclusive,
                 address: address.trim() || null,
                 contact_phone: contactPhone.trim() || null,
                 contact_email: contactEmail.trim() || null,
@@ -440,6 +443,25 @@ export default function SettingsPage() {
                                 <Label htmlFor="maxdisc">Max Discount (%)</Label>
                                 <Input id="maxdisc" value={maxDiscountPct} onChange={(e) => setMaxDiscountPct(e.target.value)} placeholder="blank = no cap" disabled={ro} />
                             </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 border-t pt-4">
+                            <div className="min-w-0">
+                                <div className="text-sm font-medium">Prices include tax (VAT-inclusive)</div>
+                                <div className="text-xs text-muted-foreground">
+                                    On: entered prices already contain VAT (back-computed). Off: VAT is added on top.
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={taxInclusive}
+                                aria-label="Prices include tax"
+                                disabled={ro}
+                                onClick={() => setTaxInclusive((v) => !v)}
+                                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${taxInclusive ? "bg-primary" : "bg-muted"}`}
+                            >
+                                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${taxInclusive ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+                            </button>
                         </div>
                     </CardContent>
                 </Card>

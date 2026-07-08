@@ -11,7 +11,7 @@ import {
     DialogFooter,
 } from "@zorviz/ui";
 import { Plus, Trash2, Wrench, Package } from "lucide-react";
-import { toCentavos, fromCentavos, formatMoney } from "@zorviz/core";
+import { toCentavos, fromCentavos, formatMoney, computeTotals } from "@zorviz/core";
 import { EntityPicker } from "../../../components/entity-picker";
 import { searchInventory, createInventory, type Part } from "../../../lib/inventory-api";
 import { saveEstimate, type JobTicket } from "../../../lib/orders-api";
@@ -93,17 +93,26 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
         ]);
 
     const maxDiscountPct = config?.max_discount_pct ?? null; // fraction or null
+    const inclusive = config?.tax_inclusive === 1; // BACK-3-009: entered prices include VAT
     const lineCentavos = (r: Row) => Math.round((parseFloat(r.quantity) || 0) * toCentavos(parseFloat(r.unitPrice) || 0));
-    const subtotal = rows.reduce((s, r) => s + lineCentavos(r), 0);
+    // `entered` = sum of line prices as typed (gross when inclusive, net when exclusive).
+    const entered = rows.reduce((s, r) => s + lineCentavos(r), 0);
     const discountInput = parseFloat(discount) || 0;
+    // Discount % is measured against the entered line-sum (the customer-facing base).
     const discountC =
-        discountMode === "pct" ? Math.round(subtotal * (discountInput / 100)) : toCentavos(discountInput);
-    const effectivePct = subtotal > 0 ? (discountC / subtotal) * 100 : 0;
+        discountMode === "pct" ? Math.round(entered * (discountInput / 100)) : toCentavos(discountInput);
+    const effectivePct = entered > 0 ? (discountC / entered) * 100 : 0;
     const overCap = maxDiscountPct != null && effectivePct > maxDiscountPct * 100 + 0.001;
     const isSenior = seniorType !== "";
-    const seniorDiscC = isSenior ? Math.round(subtotal * 0.2) : 0; // 20% statutory
-    const tax = isSenior ? 0 : Math.round(subtotal * taxRate); // VAT-exempt when senior/PWD
-    const total = subtotal + tax - discountC - seniorDiscC;
+    const { net, tax, seniorDiscount: seniorDiscC, total } = computeTotals({
+        entered,
+        discount: discountC,
+        senior: isSenior,
+        taxRate,
+        taxInclusive: inclusive,
+    });
+    // In inclusive mode the shown subtotal is the gross line-sum (matches the item rows); otherwise net.
+    const subtotalShown = inclusive ? entered : net;
 
     const submit = async () => {
         const items = rows
@@ -219,7 +228,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                     <div className="border-t pt-3 space-y-1 text-sm">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Subtotal</span>
-                            <span>{formatMoney(subtotal, currency)}</span>
+                            <span>{formatMoney(subtotalShown, currency)}</span>
                         </div>
                         <div className="flex flex-wrap justify-between items-center gap-2">
                             <span className="text-muted-foreground">
@@ -274,7 +283,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                         )}
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">
-                                {isSenior ? "Tax (VAT-exempt)" : `Tax (${(taxRate * 100).toFixed(0)}%)`}
+                                {isSenior ? "Tax (VAT-exempt)" : `${inclusive ? "VAT incl." : "Tax"} (${(taxRate * 100).toFixed(0)}%)`}
                             </span>
                             <span>{formatMoney(tax, currency)}</span>
                         </div>

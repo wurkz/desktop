@@ -60,7 +60,7 @@ Remaining polish folds into **BACK-3-009** below.
 
 ---
 
-## BACK-3-009 · VAT-Inclusive Pricing Option (include vs. exclude — current)
+## BACK-3-009 · VAT-Inclusive Pricing Option (include vs. exclude — current) · *implemented, pending verification*
 
 **Priority:** 🟡 Medium (PH market: BIR retail price tags are VAT-inclusive, so many shops quote
 "all-in" prices)
@@ -94,6 +94,20 @@ Add a Settings toggle for how the tax rate is applied to line prices:
   net + tax always reconciles to the gross total.
 - Relabel the printout tax line "VAT (12%)" / "VAT included (12%)" per mode (closes the last
   BACK-3-008 criterion).
+
+**Decisions (2026-07-08, via interactive prototype):**
+- **Discount base in inclusive mode = GROSS** (the customer-facing all-in price). Conveniently this
+  equals today's exclusive behavior (% off the entered line-sum), so exclusive mode is byte-for-byte
+  unchanged and the discount-cap check needs no change.
+- **Rounding:** inclusive derives `net = round(entered/(1+rate))` and `tax = entered − net`, so
+  `net + tax` reconciles exactly to the entered gross at the estimate stage. `set_discounts` (billing
+  tweak) recomputes tax as `round(net·rate)` from the stored net — may differ by ≤1 centavo in rare
+  edge cases; acceptable for a discount adjustment.
+- **Storage stays canonical** (`subtotal`=net, `tax`, `total`) in both modes; the mode only changes
+  how entered prices convert to net, the displayed subtotal (gross in inclusive), and labels. Historical
+  orders keep their stored values (only recomputed on an explicit re-save). No per-order mode column.
+- **Single source of math:** `@zorviz/core` `computeTotals()` mirrors the Rust `compute_totals` exactly;
+  both client dialogs use it so previews match the server.
 
 **Acceptance Criteria:**
 - [ ] Settings → Currency & Tax gains a "Prices include tax" toggle (default **off** = current

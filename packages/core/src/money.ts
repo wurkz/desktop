@@ -27,3 +27,36 @@ export function formatMoney(centavos: number, currencySymbol = ''): string {
     const grouped = major.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return `${sign}${currencySymbol}${grouped}.${minor}`;
 }
+
+export interface TotalsInput {
+    /** Sum of line prices as entered (net when exclusive, gross when inclusive), centavos. */
+    entered: number;
+    /** Manual discount amount already resolved to centavos. */
+    discount: number;
+    /** Senior/PWD sale (VAT-exempt + 20% off net). */
+    senior: boolean;
+    /** Tax rate as a fraction, e.g. 0.12. */
+    taxRate: number;
+    /** True when entered prices already include VAT (BACK-3-009). */
+    taxInclusive: boolean;
+}
+
+export interface Totals {
+    net: number; // canonical VAT-exclusive subtotal (centavos)
+    tax: number;
+    seniorDiscount: number;
+    total: number;
+}
+
+/**
+ * Canonical order-total math (BACK-3-009). MUST mirror `compute_totals` in the Rust backend so
+ * client previews match what the server stores. Inclusive mode back-computes net + embedded VAT so
+ * net + tax reconciles exactly to the entered gross; exclusive mode adds VAT on top.
+ */
+export function computeTotals({ entered, discount, senior, taxRate, taxInclusive }: TotalsInput): Totals {
+    const net = taxInclusive ? Math.round(entered / (1 + taxRate)) : entered;
+    const tax = senior ? 0 : taxInclusive ? entered - net : Math.round(net * taxRate);
+    const seniorDiscount = senior ? Math.round(net * 0.2) : 0;
+    const total = net + tax - discount - seniorDiscount;
+    return { net, tax, seniorDiscount, total };
+}

@@ -55,6 +55,19 @@ async fn max_discount_pct(state: &ApiState) -> Option<f64> {
         .filter(|v| *v > 0.0)
 }
 
+// BACK-3-009: whether entered line prices already include VAT (inclusive) vs VAT added on top.
+async fn tax_inclusive(state: &ApiState) -> bool {
+    sqlx::query("SELECT tax_inclusive FROM app_config WHERE id = 'default' LIMIT 1")
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|r| r.try_get::<Option<i64>, _>("tax_inclusive").ok())
+        .flatten()
+        .unwrap_or(0)
+        == 1
+}
+
 // Reject a manual discount that exceeds the configured max (% of subtotal). Ok if no cap.
 fn check_discount_cap(subtotal: i64, discount: i64, max: Option<f64>) -> Result<(), (StatusCode, String)> {
     if let Some(m) = max {
@@ -693,14 +706,25 @@ pub async fn create_inventory(
 
 // ---- Estimate ----
 
-// Shared money math. Senior/PWD (RA 9994 / RA 10754): the sale is VAT-exempt (tax = 0)
-// and gets a statutory 20% discount on the (VAT-exclusive) subtotal. Returns
-// (tax, senior_discount, total), all centavos.
-fn compute_totals(subtotal: i64, discount: i64, senior: bool, rate: f64) -> (i64, i64, i64) {
-    let tax = if senior { 0 } else { (subtotal as f64 * rate).round() as i64 };
-    let senior_discount = if senior { (subtotal as f64 * 0.20).round() as i64 } else { 0 };
-    let total = subtotal + tax - discount - senior_discount;
-    (tax, senior_discount, total)
+// Shared money math (BACK-3-009). `entered` is the sum of line prices as typed.
+// - exclusive (default): prices are net; `subtotal = entered`, VAT is added on top.
+// - inclusive: prices are gross; `subtotal` (net) is back-computed and VAT is embedded
+//   (`tax = entered - net`) so net + tax reconciles exactly to the entered total.
+// Senior/PWD (RA 9994 / RA 10754): VAT-exempt (tax = 0) + statutory 20% off the net subtotal;
+// in inclusive mode the VAT is stripped first (net = entered / (1+rate)).
+// Returns (subtotal_net, tax, senior_discount, total), all centavos.
+fn compute_totals(entered: i64, discount: i64, senior: bool, rate: f64, inclusive: bool) -> (i64, i64, i64, i64) {
+    let net = if inclusive { (entered as f64 / (1.0 + rate)).round() as i64 } else { entered };
+    let tax = if senior {
+        0
+    } else if inclusive {
+        entered - net
+    } else {
+        (net as f64 * rate).round() as i64
+    };
+    let senior_discount = if senior { (net as f64 * 0.20).round() as i64 } else { 0 };
+    let total = net + tax - discount - senior_discount;
+    (net, tax, senior_discount, total)
 }
 
 // Normalize a senior/PWD type string to a valid value or None.
@@ -787,8 +811,10 @@ pub async fn save_estimate(
     }
 
     let rate = tax_rate(&state).await;
+    let inclusive = tax_inclusive(&state).await;
     let stype = senior_type(&req.senior_pwd_type);
-    let (tax, senior_discount, total) = compute_totals(subtotal, req.discount, stype.is_some(), rate);
+    // `subtotal` is the entered line-sum; compute_totals returns the canonical net subtotal.
+    let (subtotal, tax, senior_discount, total) = compute_totals(subtotal, req.discount, stype.is_some(), rate, inclusive);
     let nz = |o: &Option<String>| o.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     let now = now_ms();
 
@@ -842,7 +868,8 @@ pub async fn set_discounts(
 
     let rate = tax_rate(&state).await;
     let stype = senior_type(&req.senior_pwd_type);
-    let (tax, senior_discount, total) = compute_totals(subtotal, req.discount, stype.is_some(), rate);
+    // The stored subtotal is already canonical net, so recompute from it directly (inclusive=false).
+    let (_net, tax, senior_discount, total) = compute_totals(subtotal, req.discount, stype.is_some(), rate, false);
     let nz = |o: &Option<String>| o.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
 
     sqlx::query(
@@ -991,6 +1018,7 @@ pub struct UpdateConfigReq {
     document_title: Option<String>,
     max_discount_pct: Option<f64>, // fraction; null = no cap
     mechanic_label: Option<String>, // display name for the mechanic role
+    tax_inclusive: Option<bool>, // BACK-3-009: line prices already include VAT
 }
 
 /// PUT /api/config — edit the shop profile (admin/owner only). Never touches
@@ -1015,7 +1043,8 @@ pub async fn update_config(
         "UPDATE app_config SET shop_name = ?, device_name = ?, currency_symbol = ?, locale = ?, \
          tax_rate = ?, address = ?, contact_phone = ?, contact_email = ?, tax_registration_id = ?, \
          custom_fields = ?, proprietor = ?, business_style = ?, vat_status = ?, \
-         terms_and_conditions = ?, document_title = ?, max_discount_pct = ?, mechanic_label = ?, updated_at = ? WHERE id = 'default'",
+         terms_and_conditions = ?, document_title = ?, max_discount_pct = ?, mechanic_label = ?, \
+         tax_inclusive = ?, updated_at = ? WHERE id = 'default'",
     )
     .bind(req.shop_name.trim())
     .bind(req.device_name.trim())
@@ -1034,6 +1063,7 @@ pub async fn update_config(
     .bind(nz(&req.document_title))
     .bind(req.max_discount_pct.filter(|v| *v > 0.0))
     .bind(nz(&req.mechanic_label))
+    .bind(if req.tax_inclusive.unwrap_or(false) { 1_i64 } else { 0_i64 })
     .bind(now)
     .execute(&state.pool)
     .await

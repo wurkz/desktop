@@ -151,10 +151,21 @@ export async function generateInvoicePdf(
         doc.text(val, right, y, { align: "right" });
         y += 6;
     };
-    totalRow("Subtotal", formatMoney(ticket.subtotal, currency));
+    // BACK-3-009: VAT-inclusive orders show a gross subtotal (matches the line prices) and label
+    // the tax line "VAT included"; exclusive orders show net + tax added on top.
+    const inclusive = config?.tax_inclusive === 1;
+    const ratePct = config?.tax_rate != null ? Math.round(config.tax_rate * 100) : null;
+    const rateSuffix = ratePct != null ? ` (${ratePct}%)` : "";
+    const subtotalShown = inclusive && !ticket.senior_pwd_type ? ticket.subtotal + ticket.tax : ticket.subtotal;
+    const taxLabel = ticket.senior_pwd_type
+        ? "Tax (VAT-exempt)"
+        : inclusive
+          ? `VAT included${rateSuffix}`
+          : `Tax${rateSuffix}`;
+    totalRow("Subtotal", formatMoney(subtotalShown, currency));
     if (ticket.discount > 0) totalRow("Discount", `-${formatMoney(ticket.discount, currency)}`);
     if (ticket.senior_discount > 0) totalRow("Senior/PWD Disc. (20%)", `-${formatMoney(ticket.senior_discount, currency)}`);
-    totalRow(ticket.senior_pwd_type ? "Tax (VAT-exempt)" : "Tax", formatMoney(ticket.tax, currency));
+    totalRow(taxLabel, formatMoney(ticket.tax, currency));
     totalRow("Total", formatMoney(ticket.total, currency), true);
 
     // Terms & Conditions block (only if configured).
