@@ -959,11 +959,15 @@ pub async fn setup(
 
     let now = now_ms();
     let custom_fields = req.custom_fields.map(|v| v.to_string());
+    // Unique per-install tenant identity (cloud-ready). The whole local DB belongs to this tenant;
+    // the future sync engine stamps records with it and the backend segregates shops by it.
+    let tenant = uuid::Uuid::new_v4().to_string();
     sqlx::query(
         "INSERT INTO app_config (id, tenant_id, branch_id, shop_name, device_name, currency_symbol, locale, \
          tax_rate, address, contact_phone, contact_email, logo_path, tax_registration_id, custom_fields, created_at, updated_at) \
-         VALUES ('default', 'dev-tenant', 'main', ?, 'Main PC', ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)",
+         VALUES ('default', ?, 'main', ?, 'Main PC', ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)",
     )
+    .bind(&tenant)
     .bind(req.shop_name.trim())
     .bind(req.currency_symbol.trim())
     .bind(req.locale.as_deref().unwrap_or("en-US"))
@@ -999,11 +1003,11 @@ pub async fn setup(
     match req.asset_types {
         Some(types) if !types.is_empty() => {
             for (i, t) in types.iter().enumerate() {
-                let _ = crate::asset_types::insert_type(&state.pool, "dev-tenant", t, i as i64).await;
+                let _ = crate::asset_types::insert_type(&state.pool, &tenant, t, i as i64).await;
             }
         }
         _ => {
-            let _ = crate::asset_types::seed_builtins(&state.pool, "dev-tenant").await;
+            let _ = crate::asset_types::seed_builtins(&state.pool, &tenant).await;
         }
     }
 
@@ -1031,6 +1035,10 @@ pub struct UpdateConfigReq {
     max_discount_pct: Option<f64>, // fraction; null = no cap
     mechanic_label: Option<String>, // display name for the mechanic role
     tax_inclusive: Option<bool>, // BACK-3-009: line prices already include VAT
+    // Cloud link (opt-in, default off) — BACK-4 prep.
+    cloud_url: Option<String>,
+    device_token: Option<String>,
+    sync_enabled: Option<bool>,
 }
 
 /// PUT /api/config — edit the shop profile (admin/owner only). Never touches
@@ -1056,7 +1064,7 @@ pub async fn update_config(
          tax_rate = ?, address = ?, contact_phone = ?, contact_email = ?, tax_registration_id = ?, \
          custom_fields = ?, proprietor = ?, business_style = ?, vat_status = ?, \
          terms_and_conditions = ?, document_title = ?, max_discount_pct = ?, mechanic_label = ?, \
-         tax_inclusive = ?, updated_at = ? WHERE id = 'default'",
+         tax_inclusive = ?, cloud_url = ?, device_token = ?, sync_enabled = ?, updated_at = ? WHERE id = 'default'",
     )
     .bind(req.shop_name.trim())
     .bind(req.device_name.trim())
@@ -1076,6 +1084,9 @@ pub async fn update_config(
     .bind(req.max_discount_pct.filter(|v| *v > 0.0))
     .bind(nz(&req.mechanic_label))
     .bind(if req.tax_inclusive.unwrap_or(false) { 1_i64 } else { 0_i64 })
+    .bind(req.cloud_url.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()))
+    .bind(req.device_token.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()))
+    .bind(if req.sync_enabled.unwrap_or(false) { 1_i64 } else { 0_i64 })
     .bind(now)
     .execute(&state.pool)
     .await

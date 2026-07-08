@@ -26,6 +26,10 @@ export interface AppConfigTable {
     max_discount_pct: Nullable<number>; // cap on manual discount as a fraction (null = no cap)
     mechanic_label: Nullable<string>; // display name for the mechanic role (null → "Mechanic")
     tax_inclusive: number; // BACK-3-009: 1 = entered prices include VAT; 0 = VAT added on top
+    // Cloud-link config (BACK-4 prep) — opt-in, default off; the app runs fully local without these.
+    cloud_url: Nullable<string>; // backend base URL (null = not linked)
+    device_token: Nullable<string>; // bearer token for authenticated sync
+    sync_enabled: number; // 1 = cloud sync on; 0 = off (default)
     created_at: number;
     updated_at: number;
 }

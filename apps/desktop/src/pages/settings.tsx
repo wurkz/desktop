@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent, ThemeSwitcher } from "@zorviz/ui";
-import { ArrowLeft, Store, Coins, Monitor, ListPlus, Plus, Trash2, Image as ImageIcon, FileText, Palette, QrCode } from "lucide-react";
+import { ArrowLeft, Store, Coins, Monitor, ListPlus, Plus, Trash2, Image as ImageIcon, FileText, Palette, QrCode, Cloud, Copy, Check } from "lucide-react";
 import { LanQr } from "../components/lan-qr";
 import { useAuthStore } from "../stores/auth";
 import { useAppConfigStore } from "../stores/app-config";
@@ -45,6 +45,11 @@ export default function SettingsPage() {
     const [taxRatePct, setTaxRatePct] = useState("");
     const [maxDiscountPct, setMaxDiscountPct] = useState("");
     const [taxInclusive, setTaxInclusive] = useState(false);
+    // Cloud link (opt-in) — BACK-4 prep
+    const [cloudUrl, setCloudUrl] = useState("");
+    const [deviceToken, setDeviceToken] = useState("");
+    const [syncEnabled, setSyncEnabled] = useState(false);
+    const [tenantCopied, setTenantCopied] = useState(false);
     // Device
     const [deviceName, setDeviceName] = useState("");
     // Custom fields
@@ -154,6 +159,9 @@ export default function SettingsPage() {
         setTaxRatePct(config.tax_rate != null ? String(config.tax_rate * 100) : "");
         setMaxDiscountPct(config.max_discount_pct != null ? String(config.max_discount_pct * 100) : "");
         setTaxInclusive(config.tax_inclusive === 1);
+        setCloudUrl(config.cloud_url ?? "");
+        setDeviceToken(config.device_token ?? "");
+        setSyncEnabled(config.sync_enabled === 1);
         setDeviceName(config.device_name ?? "");
         setProprietor(config.proprietor ?? "");
         setBusinessStyle(config.business_style ?? "");
@@ -210,6 +218,9 @@ export default function SettingsPage() {
                 tax_rate: taxRatePct.trim() ? Number(taxRatePct) / 100 : null,
                 max_discount_pct: maxDiscountPct.trim() ? Number(maxDiscountPct) / 100 : null,
                 tax_inclusive: taxInclusive,
+                cloud_url: cloudUrl.trim() || null,
+                device_token: deviceToken.trim() || null,
+                sync_enabled: syncEnabled,
                 address: address.trim() || null,
                 contact_phone: contactPhone.trim() || null,
                 contact_email: contactEmail.trim() || null,
@@ -538,6 +549,66 @@ export default function SettingsPage() {
                                 <Plus className="w-4 h-4 mr-2" /> Add Field
                             </Button>
                         )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex-row items-center gap-2 space-y-0">
+                        <Cloud className="w-5 h-5 text-primary" />
+                        <CardTitle className="text-base">Cloud Link</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            Optional and off by default — the app runs fully offline. When your cloud backend is
+                            ready, enable this and point it at the backend URL to back up and sync this shop.
+                        </p>
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <div className="text-sm font-medium">Enable cloud sync</div>
+                                <div className="text-xs text-muted-foreground">Syncing stays off until this is on and a URL is set.</div>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={syncEnabled}
+                                aria-label="Enable cloud sync"
+                                disabled={ro}
+                                onClick={() => setSyncEnabled((v) => !v)}
+                                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${syncEnabled ? "bg-primary" : "bg-muted"}`}
+                            >
+                                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${syncEnabled ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+                            </button>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="cloudurl">Backend URL</Label>
+                            <Input id="cloudurl" value={cloudUrl} onChange={(e) => setCloudUrl(e.target.value)} placeholder="https://cloud.example.com" disabled={ro} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="devtoken">Device token</Label>
+                            <Input id="devtoken" value={deviceToken} onChange={(e) => setDeviceToken(e.target.value)} placeholder="Paste the token from your cloud dashboard" disabled={ro} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label>Shop ID (tenant)</Label>
+                            <div className="flex items-center gap-2">
+                                <code className="flex-1 truncate rounded-md border bg-muted px-3 py-2 text-xs font-mono">{config?.tenant_id ?? "—"}</code>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    type="button"
+                                    onClick={async () => {
+                                        if (!config?.tenant_id) return;
+                                        try {
+                                            await navigator.clipboard.writeText(config.tenant_id);
+                                            setTenantCopied(true);
+                                            setTimeout(() => setTenantCopied(false), 1500);
+                                        } catch { /* clipboard unavailable */ }
+                                    }}
+                                >
+                                    {tenantCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Register this ID in your cloud backend to link this shop.</p>
+                        </div>
                     </CardContent>
                 </Card>
                 </>)}

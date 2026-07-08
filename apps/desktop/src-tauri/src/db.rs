@@ -61,5 +61,32 @@ pub async fn init_db(_app_handle: &AppHandle) -> Result<Pool<Sqlite>, String> {
     // Run migrations
     sqlx::migrate!("../../../packages/db/migrations/sqlite").run(&pool).await.map_err(|e| e.to_string())?;
 
+    rotate_dev_tenant(&pool).await;
+
     Ok(pool)
+}
+
+// Cloud prep: older installs were set up with the shared placeholder tenant_id 'dev-tenant', which
+// would collide across shops in the cloud. Rotate it once to a unique UUID, cascading across every
+// table that stores tenant_id (in a transaction) so tenant-scoped queries keep matching. New
+// installs already generate a UUID at setup, so this is a no-op for them.
+async fn rotate_dev_tenant(pool: &Pool<Sqlite>) {
+    let is_dev: Option<String> = sqlx::query_scalar("SELECT tenant_id FROM app_config WHERE id = 'default' LIMIT 1")
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten();
+    if is_dev.as_deref() != Some("dev-tenant") {
+        return;
+    }
+    let new_tenant = uuid::Uuid::new_v4().to_string();
+    let Ok(mut tx) = pool.begin().await else { return };
+    for table in ["app_config", "customers", "assets", "asset_types"] {
+        let sql = format!("UPDATE {table} SET tenant_id = ? WHERE tenant_id = 'dev-tenant'");
+        if sqlx::query(&sql).bind(&new_tenant).execute(&mut *tx).await.is_err() {
+            let _ = tx.rollback().await;
+            return;
+        }
+    }
+    let _ = tx.commit().await;
 }

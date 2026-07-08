@@ -1,8 +1,20 @@
 # Phase 4 Backlog — Cloud Link
 
-> **Status:** ~10% Complete (types + sync queue scaffolded, not integrated)  
+> **Status:** ~10% Complete (types + sync queue scaffolded, not integrated). **Backend parked.**  
 > **Scope:** Postgres Mirror, Sync Engine, Next.js Dashboard, Customer Portal  
 > **Completed items live in:** [`phase-4-completed.md`](./phase-4-completed.md)
+
+> **Client-side prep shipped in the desktop app (2026-07-08)** so enabling cloud later needs no
+> reinstall — only config:
+> - **Unique per-install tenant identity** — setup now generates a UUID `tenant_id` (was the shared
+>   `'dev-tenant'`); existing installs rotate to a UUID once at startup, cascading across the
+>   tenant-scoped tables (`app_config`, `customers`, `assets`, `asset_types`).
+> - **Cloud-link config** (migration 0019, `app_config`): `cloud_url`, `device_token`, `sync_enabled`
+>   — **opt-in, default off**; the app runs fully offline whether or not they're set.
+> - **Cloud Link settings card** (admin-only): enable toggle + backend URL + device token, and the
+>   read-only, copyable **Shop ID (tenant)** to register in the backend.
+> - **Still parked:** the sync engine + the whole cloud backend (Postgres, Next.js, sync API) — they
+>   define each other's protocol and are built together later. Enabling a shop then = config, not a build.
 
 ---
 
