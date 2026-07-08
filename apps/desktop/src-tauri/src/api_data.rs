@@ -1555,6 +1555,29 @@ pub async fn start_order(
 ) -> Result<Json<Value>, StatusCode> {
     let session = session_from_headers(&state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
     let now = now_ms();
+
+    // BACK-2-016: Start is the "work has begun" declaration, so started_at must be attributable
+    // to a mechanic. A mechanic starts their own work (auto-claim below). Staff (owner/admin/
+    // advisor) may start ONLY on behalf of an already-assigned mechanic; starting an unassigned
+    // job as staff is rejected (assign first). Other roles can't start.
+    let is_mechanic = session.role == "mechanic";
+    let is_staff = matches!(session.role.as_str(), "owner" | "admin" | "advisor");
+    if !is_mechanic && !is_staff {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    if is_staff {
+        let assigned: Option<String> = sqlx::query("SELECT assigned_mechanic_id FROM orders WHERE id = ?")
+            .bind(&id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .and_then(|r| r.try_get::<Option<String>, _>("assigned_mechanic_id").ok().flatten());
+        if assigned.is_none() {
+            // Nothing to attribute the clock to — the caller must assign a mechanic first.
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    }
+
     sqlx::query(
         "UPDATE orders SET status = 'in_progress', started_at = COALESCE(started_at, ?), updated_at = ? \
          WHERE id = ? AND status IN ('approved', 'in_progress')",
@@ -1567,7 +1590,7 @@ pub async fn start_order(
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // A mechanic starting an unassigned job claims it.
-    if session.role == "mechanic" {
+    if is_mechanic {
         let _ = sqlx::query("UPDATE orders SET assigned_mechanic_id = ?, updated_at = ? WHERE id = ? AND assigned_mechanic_id IS NULL")
             .bind(&session.user_id)
             .bind(now)

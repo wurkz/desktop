@@ -1,6 +1,6 @@
 # Phase 2 Backlog — Repair Module
 
-> **Status:** Fourteen open items — BACK-2-015 (mechanic dashboard cleanup + backup API gating — *implemented, pending verification*), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation — *implemented, pending verification*), BACK-2-018 (Appearance -> Settings — *implemented, pending verification*), BACK-2-019 (mobile one-row KPI strip — *implemented, pending verification*), BACK-2-020 (billing actions staff-only — *implemented, pending verification*), BACK-2-021 (case-insensitive usernames — *implemented, pending verification*), BACK-2-022 (slide-to-confirm on actions — *implemented, pending verification*), BACK-2-023 (assign staff-only — *implemented, pending verification*), BACK-2-024 (responsive estimate dialog — *implemented (estimate, discounts + inventory dialogs audited); pending verification*), BACK-2-025 (dyslexia-friendly mode — *implemented, pending verification*), BACK-2-026 (de-emphasize trial banner — *implemented, pending verification*), BACK-2-027 (QR-code login + printable QR — *implemented, pending verification*), BACK-2-028 (mechanic checklist completion UX + confirmation — *implemented, pending verification*). Everything else complete — core loop,
+> **Status:** Fourteen open items — BACK-2-015 (mechanic dashboard cleanup + backup API gating — *implemented, pending verification*), BACK-2-016 (Start Job role logic + on-behalf start — *implemented, pending verification*), BACK-2-017 (ticket back-navigation — *implemented, pending verification*), BACK-2-018 (Appearance -> Settings — *implemented, pending verification*), BACK-2-019 (mobile one-row KPI strip — *implemented, pending verification*), BACK-2-020 (billing actions staff-only — *implemented, pending verification*), BACK-2-021 (case-insensitive usernames — *implemented, pending verification*), BACK-2-022 (slide-to-confirm on actions — *implemented, pending verification*), BACK-2-023 (assign staff-only — *implemented, pending verification*), BACK-2-024 (responsive estimate dialog — *implemented (estimate, discounts + inventory dialogs audited); pending verification*), BACK-2-025 (dyslexia-friendly mode — *implemented, pending verification*), BACK-2-026 (de-emphasize trial banner — *implemented, pending verification*), BACK-2-027 (QR-code login + printable QR — *implemented, pending verification*), BACK-2-028 (mechanic checklist completion UX + confirmation — *implemented, pending verification*). Everything else complete — core loop,
 > asset detail/edit/soft-delete, lightweight bookings, photos + note threads, role-based Jobs views,
 > Start Job + timing, cancel, discounts. Completed items live in [`phase-2-completed.md`](./phase-2-completed.md).
 > **Scope:** Asset Management, Job Orders, Service History, Mechanic Views, Billing
@@ -81,6 +81,15 @@ gating today, and the server accepts any authenticated user.
   equally un-gated today. Same logic suggests mechanic-only — but staff may need to correct a
   mis-ticked item or close a job when the mechanic forgot. Decide: gate all execution actions, or
   Start only.
+
+**Decisions (2026-07-08):**
+- **On-behalf start: ALLOWED** (not strict mechanic-only). Staff (owner/admin/advisor) may start a
+  job **only when a mechanic is already assigned** — the approved-stage button reads *"Start for
+  {mechanic}"*. Starting an unassigned job as staff is rejected server-side (400) with a UI hint to
+  assign first, so `started_at` is always attributable. Mechanics start their own work as before
+  (auto-claim when unassigned).
+- **Checklist ticks & Mark-as-Done: NOT gated** — staff keep access so they can correct a mis-tick
+  or close a job the mechanic forgot. Only *Start* got the role logic.
 
 **Acceptance Criteria:**
 - [ ] Advisor/admin no longer see "Start Job" on an approved ticket (see a waiting hint instead;

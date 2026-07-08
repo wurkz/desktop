@@ -329,9 +329,21 @@ export default function JobTicketPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     <p className="text-sm text-muted-foreground">
-                                        Approved — {ticket.items.length} task(s) ready. Start the job when you begin work.
+                                        Approved — {ticket.items.length} task(s) ready.
+                                        {role === "mechanic" ? " Start the job when you begin work." : ""}
                                     </p>
-                                    <Button className="w-full" onClick={startJob}>Start Job</Button>
+                                    {role === "mechanic" ? (
+                                        <Button className="w-full" onClick={startJob}>Start Job</Button>
+                                    ) : isStaff && ticket.assigned_mechanic_id ? (
+                                        // Start on behalf of the assigned mechanic (BACK-2-016).
+                                        <Button className="w-full" variant="outline" onClick={startJob}>
+                                            Start for {ticket.mechanic?.name ?? "mechanic"}
+                                        </Button>
+                                    ) : isStaff ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            Assign a mechanic to start this job.
+                                        </p>
+                                    ) : null}
                                 </CardContent>
                             </Card>
                         )}
