@@ -96,7 +96,7 @@ export function DiscountsDialog({ ticket, open, onOpenChange, onSaved }: Props) 
                 </DialogHeader>
 
                 <div className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                         <Label htmlFor="dsc">
                             Manual Discount
                             {discount.trim() && (
@@ -114,7 +114,7 @@ export function DiscountsDialog({ ticket, open, onOpenChange, onSaved }: Props) 
                             <Input id="dsc" className={`w-28 h-9 ${overCap ? "border-destructive" : ""}`} value={discount} onChange={(e) => setDiscount(e.target.value)} inputMode="decimal" placeholder="0" />
                         </div>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                         <Label>Senior / PWD</Label>
                         <div className="flex gap-2">
                             <select
@@ -130,9 +130,9 @@ export function DiscountsDialog({ ticket, open, onOpenChange, onSaved }: Props) 
                         </div>
                     </div>
                     {isSenior && (
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                             <Label htmlFor="sname">Holder name</Label>
-                            <Input id="sname" className="w-56 h-9" value={seniorName} onChange={(e) => setSeniorName(e.target.value)} placeholder="Senior/PWD full name" />
+                            <Input id="sname" className="w-full sm:w-56 h-9" value={seniorName} onChange={(e) => setSeniorName(e.target.value)} placeholder="Senior/PWD full name" />
                         </div>
                     )}
 

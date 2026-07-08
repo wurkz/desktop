@@ -152,34 +152,47 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
 
                 <div className="space-y-3">
                     {rows.map((r) => (
-                        <div key={r.key} className="flex gap-2 items-end">
-                            <div className="shrink-0 pb-2">
-                                {r.type === "service" ? (
-                                    <Wrench className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                    <Package className="h-4 w-4 text-muted-foreground" />
-                                )}
+                        // Mobile: a compact two-row card (description on top; qty/unit/price/total below).
+                        // Desktop: sm:contents flattens the wrappers so children form the original single row.
+                        <div
+                            key={r.key}
+                            className="flex flex-col gap-2 rounded-lg border p-2 sm:flex-row sm:items-end sm:border-0 sm:rounded-none sm:p-0"
+                        >
+                            <div className="flex items-end gap-2 sm:contents">
+                                <div className="shrink-0 pb-2">
+                                    {r.type === "service" ? (
+                                        <Wrench className="h-4 w-4 text-muted-foreground" />
+                                    ) : (
+                                        <Package className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                </div>
+                                <div className="flex-1 space-y-1 min-w-0">
+                                    <Label className="text-xs">Description</Label>
+                                    <Input value={r.description} onChange={(e) => setRow(r.key, { description: e.target.value })} />
+                                </div>
+                                {/* delete: mobile shows it beside description; desktop uses the one at row end */}
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 sm:hidden" onClick={() => removeRow(r.key)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
-                            <div className="flex-1 space-y-1">
-                                <Label className="text-xs">Description</Label>
-                                <Input value={r.description} onChange={(e) => setRow(r.key, { description: e.target.value })} />
+                            <div className="flex items-end gap-2 sm:contents">
+                                <div className="w-14 space-y-1">
+                                    <Label className="text-xs">Qty</Label>
+                                    <Input value={r.quantity} onChange={(e) => setRow(r.key, { quantity: e.target.value })} inputMode="decimal" />
+                                </div>
+                                <div className="w-16 space-y-1">
+                                    <Label className="text-xs">Unit</Label>
+                                    <Input value={r.unit} onChange={(e) => setRow(r.key, { unit: e.target.value })} placeholder="pc" />
+                                </div>
+                                <div className="flex-1 space-y-1 sm:flex-none sm:w-24">
+                                    <Label className="text-xs">Price</Label>
+                                    <Input value={r.unitPrice} onChange={(e) => setRow(r.key, { unitPrice: e.target.value })} inputMode="decimal" />
+                                </div>
+                                <div className="w-20 sm:w-24 text-right text-sm pb-2">{formatMoney(lineCentavos(r), currency)}</div>
+                                <Button type="button" variant="ghost" size="icon" className="hidden h-9 w-9 shrink-0 sm:flex sm:items-center sm:justify-center" onClick={() => removeRow(r.key)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
-                            <div className="w-14 space-y-1">
-                                <Label className="text-xs">Qty</Label>
-                                <Input value={r.quantity} onChange={(e) => setRow(r.key, { quantity: e.target.value })} inputMode="decimal" />
-                            </div>
-                            <div className="w-16 space-y-1">
-                                <Label className="text-xs">Unit</Label>
-                                <Input value={r.unit} onChange={(e) => setRow(r.key, { unit: e.target.value })} placeholder="pc" />
-                            </div>
-                            <div className="w-24 space-y-1">
-                                <Label className="text-xs">Price</Label>
-                                <Input value={r.unitPrice} onChange={(e) => setRow(r.key, { unitPrice: e.target.value })} inputMode="decimal" />
-                            </div>
-                            <div className="w-24 text-right text-sm pb-2">{formatMoney(lineCentavos(r), currency)}</div>
-                            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeRow(r.key)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
                         </div>
                     ))}
 
@@ -205,7 +218,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                             <span className="text-muted-foreground">Subtotal</span>
                             <span>{formatMoney(subtotal, currency)}</span>
                         </div>
-                        <div className="flex justify-between items-center gap-2">
+                        <div className="flex flex-wrap justify-between items-center gap-2">
                             <span className="text-muted-foreground">
                                 Discount
                                 {discount.trim() && (
@@ -223,7 +236,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                                 <Input className={`w-24 h-8 ${overCap ? "border-destructive" : ""}`} value={discount} onChange={(e) => setDiscount(e.target.value)} inputMode="decimal" placeholder="0" />
                             </div>
                         </div>
-                        <div className="flex justify-between items-center gap-2">
+                        <div className="flex flex-wrap justify-between items-center gap-2">
                             <span className="text-muted-foreground">Senior / PWD</span>
                             <div className="flex gap-2">
                                 <select
@@ -245,9 +258,9 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
                             </div>
                         </div>
                         {isSenior && (
-                            <div className="flex justify-between items-center gap-2">
+                            <div className="flex flex-wrap justify-between items-center gap-2">
                                 <span className="text-muted-foreground">Holder name</span>
-                                <Input className="w-56 h-8" value={seniorName} onChange={(e) => setSeniorName(e.target.value)} placeholder="Senior/PWD full name" />
+                                <Input className="w-full sm:w-56 h-8" value={seniorName} onChange={(e) => setSeniorName(e.target.value)} placeholder="Senior/PWD full name" />
                             </div>
                         )}
                         {isSenior && (
