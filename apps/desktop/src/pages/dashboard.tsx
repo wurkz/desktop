@@ -5,6 +5,7 @@ import { Button } from "@zorviz/ui";
 import { useNavigate } from "react-router-dom";
 import { formatMoney } from "@zorviz/core";
 import { ServerStatus } from "../components/server-status";
+import { CloudStatus } from "../components/cloud-status";
 import { Wrench, Package, Settings, ChevronRight, Car, ClipboardList, TrendingUp, DatabaseBackup, Users, CalendarDays } from "lucide-react";
 import { BackupDialog } from "../features/backup/BackupDialog";
 import { api } from "../lib/api";
@@ -147,6 +148,7 @@ export default function DashboardPage() {
                     )}
                     <h1 className="font-bold text-xl bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">{config?.shop_name || "Zorviz"}</h1>
                     <ServerStatus />
+                    <CloudStatus />
                 </div>
                 <div className="flex items-center gap-4">
                     <span className="text-sm text-muted-foreground">{user?.name} ({user ? roleLabel(user.role) : ""})</span>

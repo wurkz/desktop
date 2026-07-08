@@ -13,8 +13,15 @@
 >   — **opt-in, default off**; the app runs fully offline whether or not they're set.
 > - **Cloud Link settings card** (admin-only): enable toggle + backend URL + device token, and the
 >   read-only, copyable **Shop ID (tenant)** to register in the backend.
-> - **Still parked:** the sync engine + the whole cloud backend (Postgres, Next.js, sync API) — they
->   define each other's protocol and are built together later. Enabling a shop then = config, not a build.
+> - **Cloud-link lifecycle + status** (`stores/cloud-sync.ts`, `components/cloud-sync-manager.tsx`,
+>   `components/cloud-status.tsx`): when enabled + URL + token are set, the desktop polls the backend's
+>   `/health` (device-token bearer) and shows a status pill (Off / Connecting / Connected / Can't reach).
+>   **Fail-safe by design** — every failure (no backend, unreachable, timeout, 401) is caught + backed
+>   off; it never throws/blocks, so a *mistaken enable with no backend* just reads "can't reach cloud"
+>   and the app keeps running fully local.
+> - **Still parked:** the actual push/pull wire protocol (guarded stub — only runs once connected) + the
+>   whole cloud backend (Postgres, Next.js, sync API). Built together later so the protocol matches;
+>   enabling a shop then = config, not a build.
 
 ---
 

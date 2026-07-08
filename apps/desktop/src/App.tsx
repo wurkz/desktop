@@ -7,6 +7,7 @@ import { useLicenseStore } from "./stores/license";
 import { LicenseArea } from "./components/license-area";
 import { Toaster } from "./components/toaster";
 import { ConfirmProvider } from "./components/confirm";
+import { CloudSyncManager } from "./components/cloud-sync-manager";
 import SetupPage from "./pages/setup";
 import LoginPage from "./pages/login";
 import DashboardPage from "./pages/dashboard";
@@ -96,6 +97,7 @@ function App() {
           </Routes>
           </HashRouter>
           <Toaster />
+          <CloudSyncManager />
         </ConfirmProvider>
       )}
     </ThemeProvider>
