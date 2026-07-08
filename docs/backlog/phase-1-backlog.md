@@ -34,22 +34,6 @@ The `RepairModule` is instantiated directly in `lib/db.ts`. As more modules are 
 
 ---
 
-## BACK-1-003 · User Management UI
-
-**Priority:** Medium  
-**Area:** `apps/desktop/src/pages/` or settings module  
-**Description:**  
-Seed script creates admin and mechanic users, but there is no in-app UI to manage users (create, update role, deactivate). Required for real shop deployments.
-
-**Acceptance Criteria:**
-- [ ] User list page accessible from Settings
-- [ ] Create user form (email, role, temporary password)
-- [ ] Edit role / deactivate user
-- [ ] Only `admin` role can access this page
-- [ ] Uses `UsersTable` via Kysely (no raw SQL)
-
----
-
 ## BACK-1-005 · Hardware IO Foundation
 
 **Priority:** Low  

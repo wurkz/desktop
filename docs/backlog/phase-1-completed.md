@@ -336,3 +336,27 @@ the split.
 - `packages/db/src/core/*.ts`, `packages/db/src/modules/repair/*.ts`,
   `packages/db/src/modules/commerce/*.ts`, `packages/db/src/database.ts` (all new)
 - `packages/db/src/index.ts` (re-exports), `packages/db/src/types.ts` (deleted)
+
+## ✅ BACK-1-C012 · User Management UI — (superseded / delivered by BACK-0-007)
+
+**Completed:** 2026-07-08
+**Original Backlog ID:** BACK-1-003
+
+**Resolution:** No new work — this kernel-era ticket was already satisfied by **BACK-0-007**
+(minimal user management), which shipped the in-app staff-management UI. Verified against this
+ticket's acceptance criteria:
+- ✅ User list page (admin-gated) — `apps/desktop/src/pages/users.tsx`, reachable via the dashboard
+  **Staff** tile (admin/owner only); shows each user with an "(inactive)" marker.
+- ✅ Create user — name, username, role, PIN (`createUser`).
+- ✅ Edit role / deactivate — `updateUser` sets `role` and `is_active` (0 = deactivated).
+- ✅ Admin-only — `isAdmin` gate; non-admins see "Only an admin can manage staff."
+
+**Deviations from the original (stale) ACs — intentional:**
+- "Create user form with **email + temporary password**" → the app uses **username + 6-digit PIN**
+  (PBKDF2, server-side hashing) per the auth model (BACK-0-004). No email/password path exists.
+- "Uses `UsersTable` via **Kysely** (no raw SQL)" → superseded by the **HTTP API** (D23): the UI calls
+  `lib/users-api.ts` → the Rust `create_user`/`update_user` handlers. No frontend Kysely.
+
+**Key files (already shipped under BACK-0-007):**
+- `apps/desktop/src/pages/users.tsx`, `apps/desktop/src/lib/users-api.ts`,
+  `apps/desktop/src-tauri/src/api_data.rs` (`create_user` / `update_user`)
