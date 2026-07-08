@@ -1347,9 +1347,7 @@ pub async fn assign_order(
     Path(id): Path<String>,
     Json(req): Json<AssignReq>,
 ) -> Result<Json<Value>, StatusCode> {
-    if session_from_headers(&state, &headers).is_none() {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
+    require_staff(&state, &headers)?; // BACK-2-023: assign/re-assign is staff-only (mechanic → 403)
     // Closed jobs (paid/cancelled) can't be (re)assigned.
     match order_status(&state, &id).await.as_deref() {
         None => return Err(StatusCode::NOT_FOUND),

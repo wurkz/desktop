@@ -196,7 +196,7 @@ export default function JobTicketPage() {
                                         <UserCog className="w-4 h-4" />
                                         {ticket.mechanic ? ticket.mechanic.name : "Unassigned"}
                                     </span>
-                                    {ticket.status !== "paid" && ticket.status !== "cancelled" && (
+                                    {isStaff && ticket.status !== "paid" && ticket.status !== "cancelled" && (
                                         <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
                                             Assign
                                         </Button>
