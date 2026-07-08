@@ -1,6 +1,6 @@
 # Phase 2 Backlog — Repair Module
 
-> **Status:** Fourteen open items — BACK-2-015 (mechanic dashboard cleanup + backup API gating — *implemented, pending verification*), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation — *implemented, pending verification*), BACK-2-018 (Appearance -> Settings — *implemented, pending verification*), BACK-2-019 (mobile one-row KPI strip — *implemented, pending verification*), BACK-2-020 (billing actions staff-only — *implemented, pending verification*), BACK-2-021 (case-insensitive usernames — *implemented, pending verification*), BACK-2-022 (slide-to-confirm on actions), BACK-2-023 (assign staff-only — *implemented, pending verification*), BACK-2-024 (responsive estimate dialog — *implemented (estimate + discounts dialogs); inventory dialogs still to audit; pending verification*), BACK-2-025 (dyslexia-friendly mode), BACK-2-026 (de-emphasize trial banner), BACK-2-027 (QR-code login + printable QR), BACK-2-028 (mechanic checklist completion UX + confirmation). Everything else complete — core loop,
+> **Status:** Fourteen open items — BACK-2-015 (mechanic dashboard cleanup + backup API gating — *implemented, pending verification*), BACK-2-016 (Start Job mechanic-only), BACK-2-017 (ticket back-navigation — *implemented, pending verification*), BACK-2-018 (Appearance -> Settings — *implemented, pending verification*), BACK-2-019 (mobile one-row KPI strip — *implemented, pending verification*), BACK-2-020 (billing actions staff-only — *implemented, pending verification*), BACK-2-021 (case-insensitive usernames — *implemented, pending verification*), BACK-2-022 (slide-to-confirm on actions — *implemented, pending verification*), BACK-2-023 (assign staff-only — *implemented, pending verification*), BACK-2-024 (responsive estimate dialog — *implemented (estimate + discounts dialogs); inventory dialogs still to audit; pending verification*), BACK-2-025 (dyslexia-friendly mode), BACK-2-026 (de-emphasize trial banner), BACK-2-027 (QR-code login + printable QR), BACK-2-028 (mechanic checklist completion UX + confirmation). Everything else complete — core loop,
 > asset detail/edit/soft-delete, lightweight bookings, photos + note threads, role-based Jobs views,
 > Start Job + timing, cancel, discounts. Completed items live in [`phase-2-completed.md`](./phase-2-completed.md).
 > **Scope:** Asset Management, Job Orders, Service History, Mechanic Views, Billing
@@ -291,6 +291,24 @@ explicitly excluded** (owner decision) — only mutations.
   all action buttons.
 - Accessibility: provide a keyboard/AT fallback (e.g. hold-Enter or a double-confirm) since a drag
   gesture alone isn't accessible.
+
+**Decisions locked (2026-07-08, via interactive prototype):**
+- **Coverage = ALL mutating actions**, including the final confirm button inside existing dialogs
+  (Save Estimate, Discounts, Mark Approved, Cancel Job, Adjust Stock) — not just the naked one-tap set.
+- **Desktop/touch = auto-detect**: slide gesture on touch devices (`pointer: coarse`), a plain
+  **Confirm** button on mouse/desktop — the button path also serves as the keyboard/AT fallback.
+- **Checklist = ticks instant, slide on final "Mark as Done" only** (mis-ticks are reversible).
+  This is the seam with BACK-2-028: 028 only enlarges the tick targets; the confirmation lives on Done.
+- Build defaults: full-travel drag to fire with snap-back; dismiss via tap-outside / Cancel / Esc;
+  focusable track + Enter as the keyboard fallback.
+- Implementation approach: a `ConfirmProvider` mounted in `App` exposing `useConfirm()` →
+  `confirm(opts): Promise<boolean>`; each mutating handler guards with `if (!(await confirm(...))) return;`.
+  Dialog-internal confirms simply stack a second (Radix) dialog rather than an inline slider — simpler
+  and uniform; revisit if stacking feels heavy in QA.
+- **Deliberate exclusions** (reversible micro-actions / selections, same reasoning as checklist ticks,
+  flagged for owner review): **mechanic assignment** (tap-a-name in AssignDialog — reversible, staff-only)
+  and **booking→convert** (an entry into another create flow, not a final mutation). Backup *create*
+  (Back Up Now / Full Backup) is non-destructive and left unguarded; only **Restore** is guarded.
 
 **Acceptance Criteria:**
 - [ ] Reusable slide-to-confirm component (names the action, full-travel to fire, Cancel/dismiss)

@@ -19,6 +19,7 @@ import { useAppConfigStore } from "../stores/app-config";
 import { useAuthStore } from "../stores/auth";
 import { toast } from "../stores/toast";
 import { useSmartBack } from "../lib/use-smart-back";
+import { useConfirm } from "../components/confirm";
 
 function assetTitle(asset?: JobTicket["asset"]): string {
     if (!asset) return "Unknown asset";
@@ -53,6 +54,7 @@ export default function JobTicketPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const goBack = useSmartBack("/jobs"); // deep-link fallback: the jobs list (My Jobs / Jobs by role)
+    const confirm = useConfirm();
     const config = useAppConfigStore((s) => s.config);
     const currency = config?.currency_symbol ?? "";
     const role = useAuthStore((s) => s.user?.role);
@@ -77,6 +79,7 @@ export default function JobTicketPage() {
     };
     const startJob = async () => {
         if (!ticket) return;
+        if (!(await confirm({ title: "Start this job?", verb: "Slide to start job" }))) return;
         try {
             setTicket(await startOrder(ticket.id));
         } catch (e) {
@@ -85,6 +88,7 @@ export default function JobTicketPage() {
     };
     const finishJob = async () => {
         if (!ticket) return;
+        if (!(await confirm({ title: "Mark this job as done?", verb: "Slide to mark done" }))) return;
         try {
             setTicket(await markDone(ticket.id));
         } catch (e) {
@@ -93,6 +97,7 @@ export default function JobTicketPage() {
     };
     const markPaid = async () => {
         if (!ticket) return;
+        if (!(await confirm({ title: "Mark this job as paid?", verb: "Slide to mark as paid" }))) return;
         try {
             setTicket(await billOrder(ticket.id));
         } catch (e) {
@@ -117,6 +122,7 @@ export default function JobTicketPage() {
     };
     const cancelJob = async () => {
         if (!ticket) return;
+        if (!(await confirm({ title: "Cancel this job?", verb: "Slide to cancel job", danger: true }))) return;
         setCancelling(true);
         setCancelErr("");
         try {

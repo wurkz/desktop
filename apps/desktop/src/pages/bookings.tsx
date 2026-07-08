@@ -21,6 +21,7 @@ import { listBookings, createBooking, setBookingStatus, type Booking } from "../
 import { createCustomer } from "../lib/customers-api";
 import { AssetCreateForm } from "../features/repair/components/AssetCreateForm";
 import { IntakeForm } from "../features/repair/components/IntakeForm";
+import { useConfirm } from "../components/confirm";
 
 function fmtTime(ms: number): string {
     const d = new Date(ms);
@@ -41,6 +42,7 @@ export default function BookingsPage() {
     const [creating, setCreating] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
+    const askConfirm = useConfirm(); // named to avoid clashing with the local confirm() handler
 
     // New booking form
     const [name, setName] = useState("");
@@ -72,6 +74,7 @@ export default function BookingsPage() {
     const saveBooking = async () => {
         if (!name.trim() && !note.trim()) return setError("Add a customer name or a note.");
         if (!when) return setError("Pick a date and time.");
+        if (!(await askConfirm({ title: "Save this booking?", verb: "Slide to save" }))) return;
         setBusy(true);
         setError("");
         try {
@@ -91,10 +94,12 @@ export default function BookingsPage() {
     };
 
     const confirm = async (b: Booking) => {
+        if (!(await askConfirm({ title: "Confirm this booking?", verb: "Slide to confirm" }))) return;
         await setBookingStatus(b.id, { status: "confirmed" }).catch(() => {});
         refresh();
     };
     const cancel = async (b: Booking) => {
+        if (!(await askConfirm({ title: "Cancel this booking?", verb: "Slide to cancel", danger: true }))) return;
         await setBookingStatus(b.id, { status: "cancelled" }).catch(() => {});
         refresh();
     };

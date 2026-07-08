@@ -16,6 +16,7 @@ import { EntityPicker } from "../../../components/entity-picker";
 import { searchInventory, createInventory, type Part } from "../../../lib/inventory-api";
 import { saveEstimate, type JobTicket } from "../../../lib/orders-api";
 import { useAppConfigStore } from "../../../stores/app-config";
+import { useConfirm } from "../../../components/confirm";
 
 interface Row {
     key: string;
@@ -49,6 +50,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
     const config = useAppConfigStore((s) => s.config);
     const currency = config?.currency_symbol ?? "";
     const taxRate = config?.tax_rate ?? 0;
+    const confirm = useConfirm();
 
     const [rows, setRows] = useState<Row[]>([]);
     const [discount, setDiscount] = useState("");
@@ -122,6 +124,7 @@ export function EstimateBuilder({ ticket, open, onOpenChange, onSaved }: Props) 
             setError(`Discount exceeds the maximum allowed (${((maxDiscountPct ?? 0) * 100).toFixed(0)}%).`);
             return;
         }
+        if (!(await confirm({ title: "Save this estimate?", verb: "Slide to save estimate" }))) return;
         setSaving(true);
         setError("");
         try {

@@ -12,6 +12,7 @@ import {
 } from "@zorviz/ui";
 import { Camera, Trash2, MessageSquare, Send } from "lucide-react";
 import { useAuthStore } from "../../../stores/auth";
+import { useConfirm } from "../../../components/confirm";
 import {
     listPhotos,
     uploadPhoto,
@@ -58,6 +59,7 @@ function useKeyboardViewport(active: boolean): { inset: number; top: number; hei
 export function TicketPhotos({ orderId }: { orderId: string }) {
     const role = useAuthStore((s) => s.user?.role);
     const canDelete = role === "owner" || role === "admin" || role === "advisor";
+    const confirm = useConfirm();
 
     const [photos, setPhotos] = useState<Photo[]>([]);
     const [openId, setOpenId] = useState<string | null>(null);
@@ -115,6 +117,7 @@ export function TicketPhotos({ orderId }: { orderId: string }) {
 
     const removePhoto = async () => {
         if (!open) return;
+        if (!(await confirm({ title: "Delete this photo?", verb: "Slide to delete", danger: true }))) return;
         setBusy(true);
         try {
             await deletePhoto(open.id);

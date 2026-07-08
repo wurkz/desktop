@@ -29,6 +29,7 @@ import { parseCsv, pick } from "../lib/csv";
 import { ApiError } from "../lib/api";
 import { useAuthStore } from "../stores/auth";
 import { useAppConfigStore } from "../stores/app-config";
+import { useConfirm } from "../components/confirm";
 
 // Margin % on cost: (price − cost) / cost. "—" when there's no cost to compare against.
 function marginPct(p: Part): string {
@@ -219,12 +220,14 @@ function ItemDialog({ item, currency, onClose, onSaved }: { item: Part | null; c
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
 
+    const confirm = useConfirm();
     const costC = toCentavos(parseFloat(cost) || 0);
     const priceC = toCentavos(parseFloat(price) || 0);
     const margin = costC > 0 ? (((priceC - costC) / costC) * 100).toFixed(0) + "%" : "—";
 
     const save = async () => {
         if (!name.trim()) return setError("Name is required.");
+        if (!(await confirm({ title: item ? "Save changes to this item?" : "Add this item?", verb: "Slide to save" }))) return;
         setBusy(true);
         setError("");
         try {
@@ -258,7 +261,7 @@ function ItemDialog({ item, currency, onClose, onSaved }: { item: Part | null; c
 
     const remove = async () => {
         if (!item) return;
-        if (!window.confirm(`Delete "${item.name}" from inventory?`)) return;
+        if (!(await confirm({ title: `Delete "${item.name}" from inventory?`, verb: "Slide to delete", danger: true }))) return;
         setBusy(true);
         setError("");
         try {
@@ -337,6 +340,7 @@ function AdjustDialog({ item, onClose, onSaved }: { item: Part; onClose: () => v
     const [note, setNote] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
+    const confirm = useConfirm();
 
     const n = parseFloat(qty) || 0;
     // Receive adds; write-off subtracts; correction is signed as typed.
@@ -345,6 +349,7 @@ function AdjustDialog({ item, onClose, onSaved }: { item: Part; onClose: () => v
 
     const save = async () => {
         if (!n) return setError("Enter a quantity.");
+        if (!(await confirm({ title: "Apply this stock adjustment?", verb: "Slide to apply" }))) return;
         setBusy(true);
         setError("");
         try {

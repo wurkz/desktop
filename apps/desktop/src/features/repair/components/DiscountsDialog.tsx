@@ -13,6 +13,7 @@ import {
 import { formatMoney, toCentavos, fromCentavos } from "@zorviz/core";
 import { setDiscounts, type JobTicket } from "../../../lib/orders-api";
 import { useAppConfigStore } from "../../../stores/app-config";
+import { useConfirm } from "../../../components/confirm";
 
 interface Props {
     ticket: JobTicket;
@@ -27,6 +28,7 @@ export function DiscountsDialog({ ticket, open, onOpenChange, onSaved }: Props) 
     const config = useAppConfigStore((s) => s.config);
     const currency = config?.currency_symbol ?? "";
     const taxRate = config?.tax_rate ?? 0;
+    const confirm = useConfirm();
 
     const [discount, setDiscount] = useState("");
     const [discountMode, setDiscountMode] = useState<"amount" | "pct">("amount");
@@ -62,6 +64,7 @@ export function DiscountsDialog({ ticket, open, onOpenChange, onSaved }: Props) 
             setError(`Discount exceeds the maximum allowed (${((maxDiscountPct ?? 0) * 100).toFixed(0)}%).`);
             return;
         }
+        if (!(await confirm({ title: "Save discounts?", verb: "Slide to save" }))) return;
         setSaving(true);
         setError("");
         try {

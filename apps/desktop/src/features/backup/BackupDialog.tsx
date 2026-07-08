@@ -12,6 +12,7 @@ import {
 import { Save, RotateCcw, FolderCog, Images } from "lucide-react";
 import { listBackups, backupNow, fullBackup, restoreBackup, setBackupDir, type BackupInfo } from "../../lib/backup-api";
 import { useAuthStore } from "../../stores/auth";
+import { useConfirm } from "../../components/confirm";
 
 interface Props {
     open: boolean;
@@ -23,6 +24,7 @@ export function BackupDialog({ open, onOpenChange }: Props) {
     // admin/owner). Advisors can create + view backups only. (BACK-2-015)
     const role = useAuthStore((s) => s.user?.role);
     const isAdmin = role === "owner" || role === "admin";
+    const confirm = useConfirm();
     const [dir, setDir] = useState("");
     const [backups, setBackups] = useState<BackupInfo[]>([]);
     const [busy, setBusy] = useState(false);
@@ -87,9 +89,13 @@ export function BackupDialog({ open, onOpenChange }: Props) {
     };
 
     const doRestore = async (name: string) => {
-        if (!window.confirm(`Restore from "${name}"? Current data will be replaced by this backup on the next app restart.`)) {
-            return;
-        }
+        const ok = await confirm({
+            title: `Restore from "${name}"?`,
+            message: "Your current data will be replaced by this backup on the next app restart.",
+            verb: "Slide to restore",
+            danger: true,
+        });
+        if (!ok) return;
         setBusy(true);
         try {
             await restoreBackup(name);

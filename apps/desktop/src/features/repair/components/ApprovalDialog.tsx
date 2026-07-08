@@ -11,6 +11,7 @@ import {
     DialogFooter,
 } from "@zorviz/ui";
 import { approveOrder, type JobTicket } from "../../../lib/orders-api";
+import { useConfirm } from "../../../components/confirm";
 
 const METHODS: { key: string; label: string }[] = [
     { key: "verbal", label: "In person" },
@@ -31,6 +32,7 @@ export function ApprovalDialog({ ticket, open, onOpenChange, onApproved }: Props
     const [method, setMethod] = useState("verbal");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    const confirm = useConfirm();
 
     useEffect(() => {
         if (open) {
@@ -45,6 +47,7 @@ export function ApprovalDialog({ ticket, open, onOpenChange, onApproved }: Props
             setError("Who approved this?");
             return;
         }
+        if (!(await confirm({ title: "Record this approval?", verb: "Slide to approve" }))) return;
         setSaving(true);
         setError("");
         try {
