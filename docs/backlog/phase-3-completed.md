@@ -91,3 +91,23 @@ imports** for both parts (report "2 added") and customers ("1 added"). Zero cons
 - `path/to/file.ts`
 
 -->
+
+## ✅ BACK-3-C007 · Tax Configuration
+
+**Completed:** 2026-07-08
+**Original Backlog ID:** BACK-3-008
+
+**What was implemented:**
+- This item was already ~90% done before today: `tax_rate` lives in `app_config` (0000_init),
+  Settings has the Tax Rate (%) field (BACK-1-C004), and estimates/totals compute VAT from it
+  server-side (`compute_totals`). Its only open criterion was the **invoice tax-line label**.
+- Closed that criterion: the invoice PDF tax line is now VAT-aware — **VAT-registered shops**
+  (`vat_status = 'vat'`) print **"VAT (X%)"**, others print "Tax (X%)"; VAT-inclusive orders print
+  "VAT included (X%)" (from BACK-3-009), and senior/PWD prints "…(VAT-exempt)". The rate % is
+  included from `config.tax_rate`.
+
+**Verification:** `tsc --noEmit` clean. The label renders on the invoice/job-order PDF and will be
+eyeballed alongside BACK-3-009 in the final QA pass (both touch the same PDF totals block).
+
+**Key files:**
+- `apps/desktop/src/lib/invoice-pdf.ts` (VAT-aware tax label)

@@ -44,22 +44,6 @@ After a job is done, the cashier processes payment. This is an extension of BACK
 
 ---
 
-## BACK-3-008 · Tax Configuration
-
-**Priority:** 🟢 Low — **mostly done already** (2026-07-07 note): `tax_rate` exists in `app_config`
-(0000_init), Settings has the Tax Rate (%) field (BACK-1-C004), estimates compute from it
-server-side, and the printout shows a Tax line (labeled "Tax"/"Tax (VAT-exempt)", not "VAT (12%)").
-Remaining polish folds into **BACK-3-009** below.
-
-**Original Acceptance Criteria:**
-- [x] `app_config` table gets `tax_rate` column (default `0.12` for PH VAT)
-- [x] Migration created for the new column *(part of 0000_init)*
-- [x] Settings page (BACK-1-004) includes a Tax Rate input field
-- [x] Estimation UI reads `config.tax_rate` when computing tax amount
-- [ ] Invoice clearly labels "VAT (12%)" line item *(shows "Tax" — relabel with BACK-3-009)*
-
----
-
 ## BACK-3-009 · VAT-Inclusive Pricing Option (include vs. exclude — current) · *implemented, pending verification*
 
 **Priority:** 🟡 Medium (PH market: BIR retail price tags are VAT-inclusive, so many shops quote

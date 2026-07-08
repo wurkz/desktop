@@ -157,11 +157,13 @@ export async function generateInvoicePdf(
     const ratePct = config?.tax_rate != null ? Math.round(config.tax_rate * 100) : null;
     const rateSuffix = ratePct != null ? ` (${ratePct}%)` : "";
     const subtotalShown = inclusive && !ticket.senior_pwd_type ? ticket.subtotal + ticket.tax : ticket.subtotal;
+    // VAT-registered shops label the line "VAT"; others "Tax" (BACK-3-008).
+    const taxWord = config?.vat_status === "vat" ? "VAT" : "Tax";
     const taxLabel = ticket.senior_pwd_type
-        ? "Tax (VAT-exempt)"
+        ? `${taxWord} (VAT-exempt)`
         : inclusive
           ? `VAT included${rateSuffix}`
-          : `Tax${rateSuffix}`;
+          : `${taxWord}${rateSuffix}`;
     totalRow("Subtotal", formatMoney(subtotalShown, currency));
     if (ticket.discount > 0) totalRow("Discount", `-${formatMoney(ticket.discount, currency)}`);
     if (ticket.senior_discount > 0) totalRow("Senior/PWD Disc. (20%)", `-${formatMoney(ticket.senior_discount, currency)}`);
