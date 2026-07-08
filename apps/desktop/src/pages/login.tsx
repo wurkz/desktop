@@ -45,6 +45,19 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-4">
+            {isTauri && (
+                <details className="w-full max-w-md rounded-lg border bg-card p-3 text-sm">
+                    <summary className="cursor-pointer text-muted-foreground select-none">
+                        Connect a phone to this shop
+                    </summary>
+                    <div className="pt-4">
+                        <p className="mb-3 text-center text-xs text-muted-foreground">
+                            Scan with your phone's camera to open the shop on your device.
+                        </p>
+                        <LanQr />
+                    </div>
+                </details>
+            )}
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
                     <div className="flex justify-center mb-4">
@@ -95,20 +108,6 @@ export default function LoginPage() {
                     </CardFooter>
                 </form>
             </Card>
-
-            {isTauri && (
-                <details className="w-full max-w-md rounded-lg border bg-card p-3 text-sm">
-                    <summary className="cursor-pointer text-muted-foreground select-none">
-                        Connect a phone to this shop
-                    </summary>
-                    <div className="pt-4">
-                        <p className="mb-3 text-center text-xs text-muted-foreground">
-                            Scan with your phone's camera to open the shop on your device.
-                        </p>
-                        <LanQr />
-                    </div>
-                </details>
-            )}
         </div>
     );
 }
