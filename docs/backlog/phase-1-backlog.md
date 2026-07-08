@@ -6,7 +6,16 @@
 
 ---
 
-## BACK-1-002 · Module Loader / Registry
+## ~~BACK-1-002 · Module Loader / Registry~~ · ❌ OBSOLETE (superseded by D23)
+
+> **Obsolete 2026-07-08.** This ticket targeted the pre-D23 architecture where the frontend
+> instantiated `RepairModule` (Kysely) directly in `apps/desktop/src/lib/db.ts`. That design was
+> replaced by the **local HTTP API** (BACK-0-005 / D23): there is no `lib/db.ts`, no frontend Kysely
+> instance, and `RepairModule` is never instantiated in the app (it's used for types only). The data
+> path is now `lib/*-api.ts` → axum server, and the real module seam lives in the Rust backend
+> (`server.rs` route registration). A frontend `ModuleRegistry` would serve an architecture that no
+> longer exists. If a module registry is ever wanted, file a fresh **backend** ticket (config-driven
+> enable/disable + route registration in Rust). Original scope kept below for reference.
 
 **Priority:** Low (hardcoded acceptable for now per plan)  
 **Area:** `apps/desktop/src/lib/`  
