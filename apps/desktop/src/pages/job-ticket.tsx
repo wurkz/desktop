@@ -4,7 +4,7 @@ import {
     Button, Card, CardHeader, CardTitle, CardContent,
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@zorviz/ui";
-import { ArrowLeft, CheckCircle2, AlertTriangle, MinusCircle, FileText, UserCog, Ban, Printer, ChevronRight } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle, MinusCircle, FileText, UserCog, Ban, Printer, ChevronRight, Check } from "lucide-react";
 import { formatMoney } from "@zorviz/core";
 import { getOrder, completeItem, startOrder, markDone, billOrder, cancelOrder, type JobTicket, type InspectionItem } from "../lib/orders-api";
 import { ApiError } from "../lib/api";
@@ -345,23 +345,30 @@ export default function JobTicketPage() {
                                     {ticket.started_at && (
                                         <div className="text-xs text-muted-foreground">Started {elapsed(ticket.started_at)}</div>
                                     )}
-                                    {ticket.items.map((it) => (
-                                        <label
-                                            key={it.id}
-                                            className="flex items-center gap-3 py-1 cursor-pointer select-none"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                className="h-5 w-5 shrink-0"
-                                                checked={it.completed === 1}
-                                                onChange={(e) => toggleItem(it.id, e.target.checked)}
-                                            />
-                                            <span className={it.completed === 1 ? "line-through text-muted-foreground" : ""}>
-                                                {it.description}
-                                                <span className="text-muted-foreground"> ×{it.quantity}</span>
-                                            </span>
-                                        </label>
-                                    ))}
+                                    {ticket.items.map((it) => {
+                                        const complete = it.completed === 1;
+                                        return (
+                                            <button
+                                                key={it.id}
+                                                type="button"
+                                                onClick={() => toggleItem(it.id, !complete)}
+                                                aria-pressed={complete}
+                                                className="flex w-full items-center gap-3 rounded-lg border p-3 min-h-[52px] text-left transition-transform active:scale-[0.99] hover:bg-muted/50 select-none"
+                                            >
+                                                <span
+                                                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-md border-2 ${
+                                                        complete ? "border-primary bg-primary text-primary-foreground" : "border-input"
+                                                    }`}
+                                                >
+                                                    {complete && <Check className="h-4 w-4" />}
+                                                </span>
+                                                <span className={complete ? "line-through text-muted-foreground" : ""}>
+                                                    {it.description}
+                                                    <span className="text-muted-foreground"> ×{it.quantity}</span>
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
                                     <Button
                                         className="w-full mt-2"
                                         disabled={!ticket.items.every((it) => it.completed === 1)}
