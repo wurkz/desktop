@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/auth";
 import { useAppConfigStore } from "../stores/app-config";
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@zorviz/ui";
-import { Wrench } from "lucide-react";
 import { logoUrl } from "../lib/logo-api";
 import { PinInput } from "../components/pin-input";
 import { LanQr } from "../components/lan-qr";
@@ -64,9 +63,7 @@ export default function LoginPage() {
                         {config?.logo_path ? (
                             <img src={logoUrl(config.updated_at)} alt="Shop logo" className="h-16 max-w-[180px] object-contain" />
                         ) : (
-                            <div className="p-3 bg-primary/10 rounded-full">
-                                <Wrench className="w-8 h-8 text-primary" />
-                            </div>
+                            <img src="/wurkz-mark.png" alt="Wurkz" className="h-12 object-contain" />
                         )}
                     </div>
                     <CardTitle className="text-2xl text-center">{shopName || "Wurkz Shop"}</CardTitle>
