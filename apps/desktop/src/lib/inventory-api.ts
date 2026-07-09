@@ -84,6 +84,7 @@ export interface Payable {
     sku: string;
     delta: number;
     total_cost: number;
+    balance: number; // remaining owed after partial settlements
     note: string | null;
     supplier: string | null;
     created_at: number;

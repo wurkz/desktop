@@ -60,6 +60,7 @@ pub async fn create_expense(
         return Err((StatusCode::BAD_REQUEST, "the amount must be greater than zero".to_string()));
     }
     // Settling a payable (BACK-3-016): the target must be an outstanding on-account receive.
+    // Partial payments allowed — the payable keeps a running balance and clears when it hits 0.
     let settle = req
         .receive_adjustment_id
         .as_ref()
@@ -69,15 +70,25 @@ pub async fn create_expense(
         if category != "parts" {
             return Err((StatusCode::BAD_REQUEST, "only a parts expense can settle a stock receive".to_string()));
         }
-        let ok: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM inventory_adjustments WHERE id = ? AND on_account = 1 AND expense_id IS NULL",
+        let balance: Option<i64> = sqlx::query_scalar(
+            "SELECT a.total_cost - COALESCE((SELECT SUM(e.amount) FROM expenses e \
+                WHERE e.receive_id = a.id AND e.voided = 0), 0) \
+             FROM inventory_adjustments a \
+             WHERE a.id = ? AND a.on_account = 1 AND a.expense_id IS NULL",
         )
         .bind(adj_id)
-        .fetch_one(&state.pool)
+        .fetch_optional(&state.pool)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
-        if ok == 0 {
-            return Err((StatusCode::CONFLICT, "That receive is not an outstanding payable.".to_string()));
+        let balance = balance.filter(|b| *b > 0).ok_or((
+            StatusCode::CONFLICT,
+            "That receive is not an outstanding payable.".to_string(),
+        ))?;
+        if req.amount > balance {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "That's more than the remaining balance owed on that receive.".to_string(),
+            ));
         }
     }
 
@@ -86,8 +97,8 @@ pub async fn create_expense(
     let id = uuid::Uuid::new_v4().to_string();
     let now = now_ms();
     sqlx::query(
-        "INSERT INTO expenses (id, category, amount, note, paid_from_drawer, author, voided, created_at, updated_at) \
-         VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)",
+        "INSERT INTO expenses (id, category, amount, note, paid_from_drawer, author, voided, receive_id, created_at, updated_at) \
+         VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&category)
@@ -95,20 +106,14 @@ pub async fn create_expense(
     .bind(&note)
     .bind(if req.paid_from_drawer { 1_i64 } else { 0_i64 })
     .bind(&author)
+    .bind(&settle)
     .bind(now)
     .bind(now)
     .execute(&state.pool)
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "could not record the expense".to_string()))?;
-
-    // Link the settled receive to this expense (clears it from the payables list).
-    if let Some(adj_id) = &settle {
-        let _ = sqlx::query("UPDATE inventory_adjustments SET expense_id = ? WHERE id = ?")
-            .bind(&id)
-            .bind(adj_id)
-            .execute(&state.pool)
-            .await;
-    }
+    // No expense_id write on the receive: the payables list clears it once the summed
+    // receive_id payments cover total_cost, and voiding a payment reopens it naturally.
 
     let row = sqlx::query("SELECT * FROM expenses WHERE id = ? LIMIT 1")
         .bind(&id)
@@ -153,7 +158,7 @@ pub async fn list_linkable_expenses(
     require_staff(&state, &headers)?;
     let rows = sqlx::query(
         "SELECT id, amount, note, author, created_at FROM expenses \
-         WHERE category = 'parts' AND voided = 0 \
+         WHERE category = 'parts' AND voided = 0 AND receive_id IS NULL \
          AND id NOT IN (SELECT expense_id FROM inventory_adjustments WHERE expense_id IS NOT NULL) \
          ORDER BY created_at DESC LIMIT 20",
     )

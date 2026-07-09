@@ -12,6 +12,7 @@ export interface ExpensesTable {
     author: Nullable<string>;
     voided: number;
     voided_by: Nullable<string>;
+    receive_id: Nullable<string>; // on-account receive this payment settles (partial allowed)
     created_at: number;
     updated_at: number;
 }

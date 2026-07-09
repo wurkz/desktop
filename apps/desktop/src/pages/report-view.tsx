@@ -268,15 +268,19 @@ function PayablesPreview({ items, cur }: { items: Payable[]; cur: string }) {
                         <div key={supplier} className="space-y-1">
                             <div className="flex items-baseline justify-between gap-3 text-sm font-semibold border-b pb-1">
                                 <span>{supplier}</span>
-                                <span className="tabular-nums">{formatMoney(rows.reduce((a, p) => a + p.total_cost, 0), cur)}</span>
+                                <span className="tabular-nums">{formatMoney(rows.reduce((a, p) => a + p.balance, 0), cur)}</span>
                             </div>
                             {rows.map((p) => (
                                 <div key={p.id} className="flex items-center gap-3 py-1 text-sm border-t border-border/50 first:border-t-0">
                                     <div className="min-w-0 flex-1">
                                         <div className="truncate">{p.item_name} <span className="text-muted-foreground">({p.sku}) × {p.delta}</span></div>
-                                        <div className="text-xs text-muted-foreground">{fmtD(p.created_at)}{p.note ? ` · ${p.note}` : ""}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                            {fmtD(p.created_at)}
+                                            {p.balance < p.total_cost ? ` · partially paid — ${formatMoney(p.total_cost - p.balance, cur)} of ${formatMoney(p.total_cost, cur)}` : ""}
+                                            {p.note ? ` · ${p.note}` : ""}
+                                        </div>
                                     </div>
-                                    <span className="tabular-nums shrink-0">{formatMoney(p.total_cost, cur)}</span>
+                                    <span className="tabular-nums shrink-0">{formatMoney(p.balance, cur)}</span>
                                     <Button size="sm" variant="outline" className="shrink-0" onClick={() => navigate("/expenses", { state: { settlePayableId: p.id } })}>
                                         Settle
                                     </Button>
@@ -284,12 +288,12 @@ function PayablesPreview({ items, cur }: { items: Payable[]; cur: string }) {
                             ))}
                         </div>
                     ))}
-                    <KV label="Total owed to suppliers" value={formatMoney(items.reduce((a, p) => a + p.total_cost, 0), cur)} strong />
+                    <KV label="Total owed to suppliers" value={formatMoney(items.reduce((a, p) => a + p.balance, 0), cur)} strong />
                 </>
             ) : (
                 <Empty>No outstanding on-account receives.</Empty>
             )}
-            <Note>Settle opens the expense form with the payable pre-selected — recording the payment clears it from this list.</Note>
+            <Note>Settle opens the expense form with the balance pre-filled. Paying less records a partial settlement — the rest stays here.</Note>
         </div>
     );
 }

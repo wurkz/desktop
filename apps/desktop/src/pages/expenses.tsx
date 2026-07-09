@@ -65,29 +65,43 @@ export default function ExpensesPage() {
         setAddOpen(true);
         listPayables().then((pbs) => {
             setPayables(pbs);
-            // Arriving via a payables-page Settle button: pre-fill the amount owed.
+            // Arriving via a payables-page Settle button: pre-fill the remaining balance.
             if (presetSettleId) {
                 const pb = pbs.find((x) => x.id === presetSettleId);
-                if (pb) setAmountStr(String(fromCentavos(pb.total_cost)));
+                if (pb) setAmountStr(String(fromCentavos(pb.balance)));
                 else setSettleId("");
             }
         }).catch(() => {});
     }, []);
 
-    // Settle handoff from the payables report page.
+    // Settle handoff from the payables report page. Cancel/save returns there, not here.
+    const [fromSettle, setFromSettle] = useState(false);
     const location = useLocation();
     useEffect(() => {
         const settle = (location.state as { settlePayableId?: string } | null)?.settlePayableId;
         if (settle) {
+            setFromSettle(true);
             openAdd(settle);
             navigate(".", { replace: true, state: null }); // consume so back/refresh doesn't re-open
         }
     }, [location.state, openAdd, navigate]);
 
+    const closeAdd = useCallback(() => {
+        setAddOpen(false);
+        if (fromSettle) {
+            setFromSettle(false);
+            navigate("/reports/payables");
+        }
+    }, [fromSettle, navigate]);
+
     const amountC = toCentavos(parseFloat(amountStr) || 0);
 
     const save = async () => {
         if (amountC <= 0) return setError("Enter an amount.");
+        const settling = category === "parts" && settleId ? payables.find((x) => x.id === settleId) : null;
+        if (settling && amountC > settling.balance) {
+            return setError(`More than the remaining balance owed (${formatMoney(settling.balance, currency)}).`);
+        }
         if (!(await confirm({ title: "Record this expense?", verb: "Slide to record" }))) return;
         setSaving(true);
         setError("");
@@ -97,9 +111,12 @@ export default function ExpensesPage() {
                 amount: amountC,
                 note: note.trim() || null,
                 paid_from_drawer: fromDrawer,
-                receive_adjustment_id: category === "parts" && settleId ? settleId : null,
+                receive_adjustment_id: settling ? settleId : null,
             });
-            setAddOpen(false);
+            if (settling && amountC < settling.balance) {
+                toast(`Partial payment recorded — ${formatMoney(settling.balance - amountC, currency)} still owed`, "success");
+            }
+            closeAdd();
             refresh();
         } catch {
             setError("Could not record the expense.");
@@ -166,7 +183,7 @@ export default function ExpensesPage() {
                 ))}
             </main>
 
-            <Dialog open={addOpen} onOpenChange={(o) => { if (!saving) setAddOpen(o); }}>
+            <Dialog open={addOpen} onOpenChange={(o) => { if (!saving && !o) closeAdd(); }}>
                 <DialogContent className="max-w-sm">
                     <DialogHeader>
                         <DialogTitle>Add Expense</DialogTitle>
@@ -204,17 +221,19 @@ export default function ExpensesPage() {
                                     onChange={(e) => {
                                         setSettleId(e.target.value);
                                         const pb = payables.find((x) => x.id === e.target.value);
-                                        if (pb && !amountStr) setAmountStr(String(pb.total_cost / 100));
+                                        if (pb && !amountStr) setAmountStr(String(fromCentavos(pb.balance)));
                                     }}
                                 >
                                     <option value="">{"\u2014 not settling a payable \u2014"}</option>
                                     {payables.map((pb) => (
                                         <option key={pb.id} value={pb.id}>
-                                            {pb.supplier ? `${pb.supplier} \u00b7 ` : ""}{pb.item_name} ({pb.sku}) {"\u00b7"} {formatMoney(pb.total_cost, currency)} owed {"\u00b7"} {new Date(pb.created_at).toLocaleDateString()}
+                                            {pb.supplier ? `${pb.supplier} \u00b7 ` : ""}{pb.item_name} ({pb.sku}) {"\u00b7"} {formatMoney(pb.balance, currency)} owed {"\u00b7"} {new Date(pb.created_at).toLocaleDateString()}
                                         </option>
                                     ))}
                                 </select>
-                                <p className="text-xs text-muted-foreground">Clears the supplier payable for that receive.</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Paying the full balance clears the payable; paying less leaves the rest outstanding.
+                                </p>
                             </div>
                         )}
                         <div className="space-y-1">
@@ -240,7 +259,7 @@ export default function ExpensesPage() {
                         {error && <p className="text-sm text-destructive">{error}</p>}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setAddOpen(false)} disabled={saving}>Cancel</Button>
+                        <Button variant="outline" onClick={closeAdd} disabled={saving}>Cancel</Button>
                         <Button onClick={save} disabled={saving || amountC <= 0}>{saving ? "Saving…" : "Save Expense"}</Button>
                     </DialogFooter>
                 </DialogContent>

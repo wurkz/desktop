@@ -456,10 +456,10 @@ export function payablesPdf(items: Payable[], config: AppConfig | null, generate
                 (p.supplier ?? "-").slice(0, 16),
                 `${p.item_name} (${p.sku})`.slice(0, 28),
                 String(p.delta),
-                formatMoney(p.total_cost, cur),
+                formatMoney(p.balance, cur),
             ])
         );
-        r.kv("TOTAL OWED TO SUPPLIERS", formatMoney(items.reduce((a, p) => a + p.total_cost, 0), cur), true);
+        r.kv("TOTAL OWED TO SUPPLIERS", formatMoney(items.reduce((a, p) => a + p.balance, 0), cur), true);
     } else {
         r.note("No outstanding on-account receives.");
     }

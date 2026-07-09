@@ -162,6 +162,7 @@ pub async fn adjust_inventory(
     if let Some(exp_id) = &link_expense {
         let ok: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM expenses WHERE id = ? AND category = 'parts' AND voided = 0 \
+             AND receive_id IS NULL \
              AND id NOT IN (SELECT expense_id FROM inventory_adjustments WHERE expense_id IS NOT NULL)",
         )
         .bind(exp_id)
@@ -279,9 +280,14 @@ pub async fn list_payables(
 ) -> Result<Json<Vec<Value>>, StatusCode> {
     require_staff(&state, &headers)?;
     let rows = sqlx::query(
-        "SELECT a.id, a.item_id, a.delta, a.total_cost, a.note, a.supplier, a.created_at, i.name AS item_name, i.sku \
+        "SELECT a.id, a.item_id, a.delta, a.total_cost, a.note, a.supplier, a.created_at, i.name AS item_name, i.sku, \
+                a.total_cost - COALESCE((SELECT SUM(e.amount) FROM expenses e \
+                    WHERE e.receive_id = a.id AND e.voided = 0), 0) AS balance \
          FROM inventory_adjustments a JOIN inventory i ON i.id = a.item_id \
-         WHERE a.on_account = 1 AND a.expense_id IS NULL ORDER BY a.supplier, a.created_at DESC LIMIT 100",
+         WHERE a.on_account = 1 AND a.expense_id IS NULL \
+         AND a.total_cost > COALESCE((SELECT SUM(e.amount) FROM expenses e \
+                    WHERE e.receive_id = a.id AND e.voided = 0), 0) \
+         ORDER BY a.supplier, a.created_at DESC LIMIT 100",
     )
     .fetch_all(&state.pool)
     .await
