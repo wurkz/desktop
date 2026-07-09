@@ -73,7 +73,9 @@ export default function AssetDetailPage() {
         setDeleteError("");
         try {
             await deleteAsset(id);
-            navigate("/repair");
+            // Replace, not push: the deleted asset's page must not stay in history
+            // (Back would land on a dead record).
+            navigate("/repair", { replace: true });
         } catch (e) {
             setDeleteError(
                 e instanceof ApiError && e.message ? e.message : "Could not delete this asset."
