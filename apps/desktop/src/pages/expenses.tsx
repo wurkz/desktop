@@ -74,13 +74,15 @@ export default function ExpensesPage() {
         }).catch(() => {});
     }, []);
 
-    // Settle handoff (payables report or supplier profile). Cancel/save returns to the origin.
-    const [returnTo, setReturnTo] = useState<string | null>(null);
+    // Settle handoff (payables report or supplier profile). Cancel/save returns to the origin
+    // by going BACK in history — pushing the origin as a new entry would leave this expenses
+    // page in the trail, so the origin's own back button would land here instead of its parent.
+    const [fromSettle, setFromSettle] = useState(false);
     const location = useLocation();
     useEffect(() => {
-        const st = location.state as { settlePayableId?: string; returnTo?: string } | null;
+        const st = location.state as { settlePayableId?: string } | null;
         if (st?.settlePayableId) {
-            setReturnTo(st.returnTo ?? "/reports/payables");
+            setFromSettle(true);
             openAdd(st.settlePayableId);
             navigate(".", { replace: true, state: null }); // consume so back/refresh doesn't re-open
         }
@@ -88,11 +90,11 @@ export default function ExpensesPage() {
 
     const closeAdd = useCallback(() => {
         setAddOpen(false);
-        if (returnTo) {
-            setReturnTo(null);
-            navigate(returnTo);
+        if (fromSettle) {
+            setFromSettle(false);
+            navigate(-1);
         }
-    }, [returnTo, navigate]);
+    }, [fromSettle, navigate]);
 
     const amountC = toCentavos(parseFloat(amountStr) || 0);
 

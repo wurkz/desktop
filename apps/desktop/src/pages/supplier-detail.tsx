@@ -74,7 +74,7 @@ export default function SupplierDetailPage() {
     };
 
     const settle = (receiveId: string) => {
-        navigate("/expenses", { state: { settlePayableId: receiveId, returnTo: `/suppliers/${s.id}` } });
+        navigate("/expenses", { state: { settlePayableId: receiveId } });
     };
 
     return (

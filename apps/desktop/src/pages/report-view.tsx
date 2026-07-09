@@ -287,7 +287,7 @@ function PayablesPreview({ items, cur }: { items: Payable[]; cur: string }) {
                                         </div>
                                     </div>
                                     <span className="tabular-nums shrink-0">{formatMoney(p.balance, cur)}</span>
-                                    <Button size="sm" variant="outline" className="shrink-0" onClick={() => navigate("/expenses", { state: { settlePayableId: p.id, returnTo: "/reports/payables" } })}>
+                                    <Button size="sm" variant="outline" className="shrink-0" onClick={() => navigate("/expenses", { state: { settlePayableId: p.id } })}>
                                         Settle
                                     </Button>
                                 </div>
