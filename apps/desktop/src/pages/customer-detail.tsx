@@ -24,6 +24,7 @@ import { StatusBadge } from "../components/status-badge";
 import { useAppConfigStore } from "../stores/app-config";
 import { useAuthStore } from "../stores/auth";
 import { toast } from "../stores/toast";
+import { useSmartBack } from "../lib/use-smart-back";
 
 // Customer profile: contact + notes, their assets, every job with its balance — the
 // collection cockpit. Collect = open the job ticket's Billing card.
@@ -38,6 +39,7 @@ function assetLabel(a: CustomerAsset): string {
 
 export default function CustomerDetailPage() {
     const navigate = useNavigate();
+    const goBack = useSmartBack("/customers"); // deep-link fallback: the directory
     const { id } = useParams<{ id: string }>();
     const currency = useAppConfigStore((s) => s.config?.currency_symbol ?? "");
     const config = useAppConfigStore((s) => s.config);
@@ -103,7 +105,7 @@ export default function CustomerDetailPage() {
     return (
         <div className="min-h-screen bg-background">
             <header className="px-4 py-3 bg-card shadow-sm flex items-center gap-3">
-                <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-lg hover:bg-muted" aria-label="Back">
+                <button onClick={goBack} className="p-2 -ml-2 rounded-lg hover:bg-muted" aria-label="Back">
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <h1 className="text-lg font-bold flex-1 min-w-0 truncate">{c.name}</h1>

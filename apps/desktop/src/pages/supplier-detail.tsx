@@ -16,10 +16,12 @@ import { supplierDetail, updateSupplier, type SupplierDetail } from "../lib/part
 import { ApiError } from "../lib/api";
 import { useAppConfigStore } from "../stores/app-config";
 import { toast } from "../stores/toast";
+import { useSmartBack } from "../lib/use-smart-back";
 
 // Supplier profile: contact + notes, what's owed (with Settle), and the receive history.
 export default function SupplierDetailPage() {
     const navigate = useNavigate();
+    const goBack = useSmartBack("/suppliers"); // deep-link fallback: the directory
     const { id } = useParams<{ id: string }>();
     const currency = useAppConfigStore((s) => s.config?.currency_symbol ?? "");
 
@@ -80,7 +82,7 @@ export default function SupplierDetailPage() {
     return (
         <div className="min-h-screen bg-background">
             <header className="px-4 py-3 bg-card shadow-sm flex items-center gap-3">
-                <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-lg hover:bg-muted" aria-label="Back">
+                <button onClick={goBack} className="p-2 -ml-2 rounded-lg hover:bg-muted" aria-label="Back">
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <h1 className="text-lg font-bold flex-1 min-w-0 truncate">{s.name}</h1>
