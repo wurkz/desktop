@@ -136,6 +136,15 @@ Reserved for multi-device / portal write-back. Shape TBD when we build bidirecti
     (`device_token`, `cloud_url`) and local-only fields never leave the shop.** Gives the cloud
     correct money formatting and policy context (e.g. discount-cap breach detection). Clouds on
     v1.1 ignore the unknown table (additive-safe).
+    Also new: **`staff_directory`** — curated projection of `users` (`id`, `name`, `role`,
+    `is_active`, `updated_at`; `updated_at` marker) so per-staff analytics (mechanic comeback
+    rate, drawer-closer variance) can show names instead of UUIDs. **Credentials never sync:**
+    no `pin_hash`/`pin_salt`, and `username` (a login identifier) stays local. The `users` table
+    itself remains excluded from sync.
+    **Deployment note (both v1.2 payloads):** a device that pushed past its watermark before the
+    cloud accepts these tables won't resend them until the row changes — after deploying the
+    cloud side, either bump each shop's settings/users once or reset the device watermark to 0
+    (idempotent full re-push heals it).
 
 ## 6. Trigger cadence (client)
 

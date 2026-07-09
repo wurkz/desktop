@@ -210,6 +210,11 @@ Desktop `sync_changes` emits a `shop_settings` single-row payload from `app_conf
 (shop_name, currency_symbol, tax_rate, vat_status, tax_inclusive, max_discount_pct — NO
 secrets: never device_token/cloud_url). `updated_at` marker. Cloud ignores unknown tables until
 Part 2 accepts it (additive, safe). Protocol doc gains a v1.2 note.
+*Re-audit addition (same day):* also emits **`staff_directory`** (users → id, name, role,
+is_active only; NO pin_hash/pin_salt/username) — per-staff analytics (mechanic comeback rate,
+drawer-closer variance) reference user UUIDs and the users table itself never syncs.
+*Status: implemented, pending verification* (both payloads verified against since=0 — correct
+fields, zero credential/secret leakage).
 
 ## BACK-4-010 · Leak Watch (cloud) — variance by closer, discount/void watch
 
