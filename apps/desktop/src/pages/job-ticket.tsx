@@ -21,6 +21,8 @@ import { useAuthStore } from "../stores/auth";
 import { toast } from "../stores/toast";
 import { useSmartBack } from "../lib/use-smart-back";
 import { useConfirm } from "../components/confirm";
+import { soaData } from "../lib/reports-api";
+import { paymentReceiptPdf, soaPdf } from "../lib/report-pdf";
 
 function assetTitle(asset?: JobTicket["asset"]): string {
     if (!asset) return "Unknown asset";
@@ -59,6 +61,7 @@ export default function JobTicketPage() {
     const config = useAppConfigStore((s) => s.config);
     const currency = config?.currency_symbol ?? "";
     const role = useAuthStore((s) => s.user?.role);
+    const userName = useAuthStore((s) => s.user?.name ?? null);
     const isStaff = role === "owner" || role === "admin" || role === "advisor";
     const [ticket, setTicket] = useState<JobTicket | null>(null);
     const [error, setError] = useState("");
@@ -109,6 +112,29 @@ export default function JobTicketPage() {
                 console.error(e);
                 toast("Couldn't generate the PDF.", "error");
             });
+    };
+    // BACK-3-018: acknowledgment receipt for one payment (shows the remaining balance).
+    const downloadReceipt = (index: number) => {
+        if (!ticket?.payments?.[index]) return;
+        try {
+            const file = paymentReceiptPdf(ticket, ticket.payments[index], index, config, userName);
+            toast(`Saved to Downloads \u00b7 ${file}`, "success");
+        } catch (e) {
+            console.error(e);
+            toast("Couldn't generate the receipt.", "error");
+        }
+    };
+    // BACK-3-018: Statement of Account for this customer's outstanding balances.
+    const downloadSoa = async () => {
+        if (!ticket?.customer) return;
+        try {
+            const data = await soaData(ticket.customer.id);
+            const file = soaPdf(data, config, userName);
+            toast(`Saved to Downloads \u00b7 ${file}`, "success");
+        } catch (e) {
+            console.error(e);
+            toast("Couldn't generate the statement.", "error");
+        }
     };
     const printJobOrder = () => {
         if (!ticket) return;
@@ -405,13 +431,25 @@ export default function JobTicketPage() {
                                                         {" · "}{new Date(p.created_at).toLocaleDateString()}
                                                         {p.change_due > 0 ? ` · change ${formatMoney(p.change_due, currency)}` : ""}
                                                     </span>
-                                                    <span>{formatMoney(p.amount, currency)}</span>
+                                                    <span className="flex items-center gap-2">
+                                                        {formatMoney(p.amount, currency)}
+                                                        <button className="text-primary hover:underline text-xs" onClick={() => downloadReceipt(i)}>
+                                                            Receipt
+                                                        </button>
+                                                    </span>
                                                 </div>
                                             ))}
                                             {(ticket.balance_due ?? 0) > 0 && (
-                                                <div className="flex justify-between font-semibold text-destructive">
+                                                <div className="flex items-center justify-between font-semibold text-destructive">
                                                     <span>Balance due</span>
-                                                    <span>{formatMoney(ticket.balance_due ?? 0, currency)}</span>
+                                                    <span className="flex items-center gap-2">
+                                                        {formatMoney(ticket.balance_due ?? 0, currency)}
+                                                        {ticket.customer && (
+                                                            <button className="text-primary hover:underline text-xs font-normal" onClick={() => void downloadSoa()}>
+                                                                SOA
+                                                            </button>
+                                                        )}
+                                                    </span>
                                                 </div>
                                             )}
                                         </div>

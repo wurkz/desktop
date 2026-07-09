@@ -380,3 +380,112 @@ pub async fn close_drawer(
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "read failed".to_string()))?;
     Ok(Json(Value::Object(row_to_json(&row))))
 }
+
+// ---- Reports (BACK-3-018 Tier 1) ----
+
+/// GET /api/drawer/report — composed numbers for the End-of-Day (Z-reading) report of the most
+/// recently CLOSED session: sales by method, drawer expenses, movements, jobs completed — all
+/// within the session window. Staff only.
+pub async fn eod_report(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    require_staff(&state, &headers).map_err(|s| (s, "staff only".to_string()))?;
+    let session = sqlx::query("SELECT * FROM drawer_sessions WHERE closed_at IS NOT NULL ORDER BY closed_at DESC LIMIT 1")
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?
+        .ok_or((StatusCode::NOT_FOUND, "No closed drawer session yet — close a day first.".to_string()))?;
+    let opened_at: i64 = session.try_get("opened_at").unwrap_or(0);
+    let closed_at: i64 = session.try_get("closed_at").unwrap_or(0);
+
+    let by_method = sqlx::query(
+        "SELECT method, COUNT(*) AS n, COALESCE(SUM(amount),0) AS total FROM payments \
+         WHERE created_at >= ? AND created_at <= ? GROUP BY method",
+    )
+    .bind(opened_at)
+    .bind(closed_at)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+
+    let expenses = sqlx::query(
+        "SELECT category, amount, note, author, created_at FROM expenses \
+         WHERE paid_from_drawer = 1 AND voided = 0 AND created_at >= ? AND created_at <= ? ORDER BY created_at",
+    )
+    .bind(opened_at)
+    .bind(closed_at)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+
+    let movements = sqlx::query(
+        "SELECT type, amount, note, author, created_at FROM drawer_movements \
+         WHERE created_at >= ? AND created_at <= ? ORDER BY created_at",
+    )
+    .bind(opened_at)
+    .bind(closed_at)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+
+    let jobs_done: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM order_status_history WHERE to_status = 'done' AND created_at >= ? AND created_at <= ?",
+    )
+    .bind(opened_at)
+    .bind(closed_at)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
+
+    Ok(Json(json!({
+        "session": Value::Object(row_to_json(&session)),
+        "payments_by_method": by_method.iter().map(|r| Value::Object(row_to_json(r))).collect::<Vec<_>>(),
+        "drawer_expenses": expenses.iter().map(|r| Value::Object(row_to_json(r))).collect::<Vec<_>>(),
+        "movements": movements.iter().map(|r| Value::Object(row_to_json(r))).collect::<Vec<_>>(),
+        "jobs_done": jobs_done,
+    })))
+}
+
+/// GET /api/reports/soa/:customer_id — Statement of Account: the customer's unpaid balances
+/// across finished jobs (status done, payments < total). Staff only.
+pub async fn soa(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(customer_id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    require_staff(&state, &headers).map_err(|s| (s, "staff only".to_string()))?;
+    let customer = sqlx::query("SELECT id, name, phone FROM customers WHERE id = ? LIMIT 1")
+        .bind(&customer_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?
+        .ok_or((StatusCode::NOT_FOUND, "customer not found".to_string()))?;
+
+    let rows = sqlx::query(
+        "SELECT o.id, o.receipt_number, o.job_order_no, o.total, o.created_at, o.asset_id, \
+                COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.order_id = o.id), 0) AS paid \
+         FROM orders o WHERE o.customer_id = ? AND o.status = 'done' ORDER BY o.created_at",
+    )
+    .bind(&customer_id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+
+    // Only jobs with an outstanding balance belong on the statement.
+    let mut items: Vec<Value> = Vec::new();
+    for r in &rows {
+        let total: i64 = r.try_get("total").unwrap_or(0);
+        let paid: i64 = r.try_get("paid").unwrap_or(0);
+        if total - paid > 0 {
+            let mut obj = row_to_json(r);
+            obj.insert("balance".to_string(), Value::from(total - paid));
+            items.push(Value::Object(obj));
+        }
+    }
+
+    Ok(Json(json!({
+        "customer": Value::Object(row_to_json(&customer)),
+        "items": items,
+    })))
+}

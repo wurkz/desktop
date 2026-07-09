@@ -186,6 +186,8 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
         .route("/api/expenses/linkable", get(financials::list_linkable_expenses))
         .route("/api/inventory/payables", get(inventory::list_payables))
         .route("/api/drawer/movement", post(financials::drawer_movement))
+        .route("/api/drawer/report", get(financials::eod_report))
+        .route("/api/reports/soa/:customer_id", get(financials::soa))
         .route("/api/drawer", get(financials::drawer_status))
         .route("/api/drawer/open", post(financials::open_drawer))
         .route("/api/drawer/close", post(financials::close_drawer))

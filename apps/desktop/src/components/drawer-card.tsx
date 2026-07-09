@@ -13,6 +13,9 @@ import {
 import { Banknote } from "lucide-react";
 import { formatMoney, toCentavos } from "@zorviz/core";
 import { drawerStatus, openDrawer, closeDrawer, drawerMovement, type DrawerSession, type DrawerMovement } from "../lib/financials-api";
+import { eodReport } from "../lib/reports-api";
+import { eodReportPdf } from "../lib/report-pdf";
+import { useAuthStore } from "../stores/auth";
 import { useAppConfigStore } from "../stores/app-config";
 import { useConfirm } from "../components/confirm";
 import { toast } from "../stores/toast";
@@ -22,6 +25,8 @@ import { toast } from "../stores/toast";
 // drawer-paid expenses (server-side) and records the over/short.
 export function DrawerCard() {
     const currency = useAppConfigStore((s) => s.config?.currency_symbol ?? "");
+    const config = useAppConfigStore((s) => s.config);
+    const userName = useAuthStore((s) => s.user?.name ?? null);
     const confirm = useConfirm();
 
     const [open, setOpen] = useState<DrawerSession | null>(null);
@@ -98,6 +103,17 @@ export function DrawerCard() {
         }
     };
 
+    // BACK-3-018: End-of-Day (Z-reading) report for the last closed session.
+    const downloadEod = async () => {
+        try {
+            const data = await eodReport();
+            const file = eodReportPdf(data, config, userName);
+            toast(`Saved to Downloads \u00b7 ${file}`, "success");
+        } catch {
+            toast("Couldn't generate the EOD report.", "error");
+        }
+    };
+
     if (!loaded) return null;
 
     return (
@@ -135,9 +151,12 @@ export function DrawerCard() {
                               }`
                             : "Track the till: open the day with a float, close it with a count."}
                     </p>
-                    <Button variant="outline" className="mt-2" onClick={() => showDialog("open")}>
-                        Open Day
-                    </Button>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={() => showDialog("open")}>Open Day</Button>
+                        {lastClosed && (
+                            <Button variant="outline" size="sm" onClick={() => void downloadEod()}>EOD Report</Button>
+                        )}
+                    </div>
                 </>
             )}
 

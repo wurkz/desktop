@@ -205,7 +205,7 @@ Close formula becomes: expected = float + cash payments − drawer expenses **+ 
 
 ---
 
-## BACK-3-018 · Printable Documents & Reports Suite (PDF-first)
+## BACK-3-018 · Printable Documents & Reports Suite (PDF-first) · *Tier 1 implemented, pending verification*
 
 **Priority:** 🔴 High (high-conversion feature set; **foundation/dependency of BACK-1-005 Hardware IO**)
 **Origin:** Owner request 2026-07-09 — catalog every printable document/report worth generating;

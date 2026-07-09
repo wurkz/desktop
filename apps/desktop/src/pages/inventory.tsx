@@ -31,6 +31,8 @@ import { useAuthStore } from "../stores/auth";
 import { useAppConfigStore } from "../stores/app-config";
 import { useConfirm } from "../components/confirm";
 import { listLinkableExpenses, type Expense } from "../lib/financials-api";
+import { reorderListPdf } from "../lib/report-pdf";
+import { toast } from "../stores/toast";
 
 // Margin % on cost: (price − cost) / cost. "—" when there's no cost to compare against.
 function marginPct(p: Part): string {
@@ -43,6 +45,8 @@ export default function InventoryPage() {
     const role = useAuthStore((s) => s.user?.role);
     const isStaff = role === "owner" || role === "admin" || role === "advisor";
     const currency = useAppConfigStore((s) => s.config?.currency_symbol ?? "");
+    const config = useAppConfigStore((s) => s.config);
+    const userName = useAuthStore((s) => s.user?.name ?? null);
 
     const [items, setItems] = useState<Part[]>([]);
     const [loaded, setLoaded] = useState(false);
@@ -132,6 +136,23 @@ export default function InventoryPage() {
                         <input type="checkbox" className="h-4 w-4" checked={lowOnly} onChange={(e) => setLowOnly(e.target.checked)} />
                         Low stock
                     </label>
+                    {lowOnly && shown.length > 0 && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0"
+                            onClick={() => {
+                                try {
+                                    const file = reorderListPdf(shown, config, userName);
+                                    toast(`Saved to Downloads \u00b7 ${file}`, "success");
+                                } catch {
+                                    toast("Couldn't generate the reorder list.", "error");
+                                }
+                            }}
+                        >
+                            Reorder List
+                        </Button>
+                    )}
                 </div>
 
                 {note && <p className="text-sm text-muted-foreground">{note}</p>}
