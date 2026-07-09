@@ -1,4 +1,4 @@
-# Cloud Sync Protocol (v1 — LOCKED 2026-07-08)
+# Cloud Sync Protocol (v1.1 — LOCKED; v1 2026-07-08, v1.1 2026-07-09)
 
 > **Status:** LOCKED v1 (decisions in §9 confirmed) — implementation in progress, backend parked.
 > This is the single contract both sides build
@@ -118,6 +118,17 @@ Reserved for multi-device / portal write-back. Shape TBD when we build bidirecti
     (`created_at` marker).
   - Already have `updated_at` (no change): `orders`, `customers`, `assets`, `asset_types`, `bookings`.
   - `app_config` gains `last_synced_at` (the client watermark).
+  - **v1.1 (2026-07-09, additive — desktop 0024/0025/0026 master data + partial settlement):**
+    - `expenses` gains `receive_id` — a payment against an on-account receive (partials allowed).
+      **Breaking semantics note:** settlement no longer writes `inventory_adjustments.expense_id`;
+      the outstanding payable balance is `total_cost − SUM(unvoided expenses with receive_id = a.id)`
+      (a voided payment reopens the payable). Cloud consumers computing payables MUST use the
+      balance formula, not `expense_id IS NULL` alone.
+    - `inventory_adjustments` gains `supplier` (denormalized display name) + `supplier_id`.
+    - `customers` gains `notes` (staff-facing).
+    - New table 14: **`suppliers`** (`id`, `name`, `contact_person`, `phone`, `address`, `notes`,
+      `created_at`, `updated_at`) — `updated_at` marker, upsert by (tenant_id, id). Desktop ids
+      may be 32-char hex (migration backfill) rather than strict UUID.
 
 ## 6. Trigger cadence (client)
 
