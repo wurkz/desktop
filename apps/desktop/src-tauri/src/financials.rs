@@ -489,3 +489,163 @@ pub async fn soa(
         "items": items,
     })))
 }
+
+#[derive(Deserialize)]
+pub struct RangeQuery {
+    from: Option<i64>,
+    to: Option<i64>,
+}
+
+/// GET /api/reports/financial-summary?from=&to= — composed numbers for the P&L and VAT summary
+/// documents (BACK-3-018 Tier 2). Pro-rata figures use the same per-payment basis as the cloud
+/// tiles (payment share × order tax/COGS/discounts). Staff only.
+pub async fn financial_summary(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    axum::extract::Query(q): axum::extract::Query<RangeQuery>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    require_staff(&state, &headers).map_err(|s| (s, "staff only".to_string()))?;
+    let from = q.from.unwrap_or(0);
+    let to = q.to.unwrap_or(now_ms());
+
+    let by_method = sqlx::query(
+        "SELECT method, COUNT(*) AS n, COALESCE(SUM(amount),0) AS total FROM payments \
+         WHERE created_at >= ? AND created_at <= ? GROUP BY method",
+    )
+    .bind(from)
+    .bind(to)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+
+    let expenses_by_category = sqlx::query(
+        "SELECT category, COALESCE(SUM(amount),0) AS total FROM expenses \
+         WHERE voided = 0 AND created_at >= ? AND created_at <= ? GROUP BY category ORDER BY total DESC",
+    )
+    .bind(from)
+    .bind(to)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+
+    // Per-order COGS map (cost_at_sale × qty; services/uncosted lines contribute 0).
+    let cogs_rows = sqlx::query(
+        "SELECT order_id, COALESCE(SUM(cost_at_sale * quantity),0) AS cogs FROM order_items \
+         WHERE cost_at_sale IS NOT NULL GROUP BY order_id",
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+    let mut cogs_map = std::collections::HashMap::new();
+    for r in &cogs_rows {
+        let oid: String = r.try_get("order_id").unwrap_or_default();
+        let c: f64 = r.try_get::<f64, _>("cogs").unwrap_or(0.0);
+        cogs_map.insert(oid, c);
+    }
+
+    // Pro-rata accumulation over the range's payments.
+    let pays = sqlx::query(
+        "SELECT p.order_id, p.amount, o.total, o.tax, (o.discount + o.senior_discount) AS disc, o.senior_pwd_type \
+         FROM payments p JOIN orders o ON o.id = p.order_id \
+         WHERE p.created_at >= ? AND p.created_at <= ?",
+    )
+    .bind(from)
+    .bind(to)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+
+    let mut revenue: i64 = 0;
+    let (mut vat, mut cogs_p, mut disc_p) = (0.0_f64, 0.0_f64, 0.0_f64);
+    let mut exempt_collected: i64 = 0;
+    for p in &pays {
+        let amount: i64 = p.try_get("amount").unwrap_or(0);
+        let total: i64 = p.try_get("total").unwrap_or(0);
+        revenue += amount;
+        if total > 0 {
+            let share = amount as f64 / total as f64;
+            vat += p.try_get::<i64, _>("tax").unwrap_or(0) as f64 * share;
+            disc_p += p.try_get::<i64, _>("disc").unwrap_or(0) as f64 * share;
+            let oid: String = p.try_get("order_id").unwrap_or_default();
+            cogs_p += cogs_map.get(&oid).copied().unwrap_or(0.0) * share;
+        }
+        let senior: Option<String> = p.try_get("senior_pwd_type").ok().flatten();
+        if senior.is_some() {
+            exempt_collected += amount;
+        }
+    }
+
+    let expenses_total: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE voided = 0 AND created_at >= ? AND created_at <= ?",
+    )
+    .bind(from)
+    .bind(to)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
+
+    Ok(Json(json!({
+        "revenue": revenue,
+        "payments_by_method": by_method.iter().map(|r| Value::Object(row_to_json(r))).collect::<Vec<_>>(),
+        "expenses_by_category": expenses_by_category.iter().map(|r| Value::Object(row_to_json(r))).collect::<Vec<_>>(),
+        "expenses_total": expenses_total,
+        "vat_collected": vat.round() as i64,
+        "cogs": cogs_p.round() as i64,
+        "discounts_given": disc_p.round() as i64,
+        "exempt_collections": exempt_collected,
+    })))
+}
+
+/// GET /api/reports/senior-pwd?from=&to= — BIR-style Senior/PWD discount record: senior/PWD
+/// orders whose FIRST payment falls in the range (collection basis, consistent with the VAT
+/// figures). Staff only.
+pub async fn senior_pwd_report(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    axum::extract::Query(q): axum::extract::Query<RangeQuery>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    require_staff(&state, &headers).map_err(|s| (s, "staff only".to_string()))?;
+    let from = q.from.unwrap_or(0);
+    let to = q.to.unwrap_or(now_ms());
+    let rows = sqlx::query(
+        "SELECT o.id, o.receipt_number, o.senior_pwd_type, o.senior_pwd_id, o.senior_pwd_name, \
+                o.subtotal, o.senior_discount, o.total, MIN(p.created_at) AS paid_at \
+         FROM orders o JOIN payments p ON p.order_id = o.id \
+         WHERE o.senior_pwd_type IS NOT NULL \
+         GROUP BY o.id HAVING paid_at >= ? AND paid_at <= ? ORDER BY paid_at",
+    )
+    .bind(from)
+    .bind(to)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+    Ok(Json(Value::Array(rows.iter().map(|r| Value::Object(row_to_json(r))).collect())))
+}
+
+/// GET /api/reports/mechanics?from=&to= — per-mechanic productivity: jobs completed in the range
+/// with average and total wrench time (started_at → completed_at). Staff only.
+pub async fn mechanic_report(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    axum::extract::Query(q): axum::extract::Query<RangeQuery>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    require_staff(&state, &headers).map_err(|s| (s, "staff only".to_string()))?;
+    let from = q.from.unwrap_or(0);
+    let to = q.to.unwrap_or(now_ms());
+    let rows = sqlx::query(
+        "SELECT o.assigned_mechanic_id, u.name, COUNT(*) AS jobs, \
+                COALESCE(AVG(o.completed_at - o.started_at),0) AS avg_ms, \
+                COALESCE(SUM(o.completed_at - o.started_at),0) AS total_ms, \
+                COALESCE(SUM(o.total),0) AS revenue \
+         FROM orders o LEFT JOIN users u ON u.id = o.assigned_mechanic_id \
+         WHERE o.completed_at IS NOT NULL AND o.completed_at >= ? AND o.completed_at <= ? \
+           AND o.assigned_mechanic_id IS NOT NULL AND o.started_at IS NOT NULL \
+         GROUP BY o.assigned_mechanic_id ORDER BY jobs DESC",
+    )
+    .bind(from)
+    .bind(to)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "query failed".to_string()))?;
+    Ok(Json(Value::Array(rows.iter().map(|r| Value::Object(row_to_json(r))).collect())))
+}

@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { formatMoney } from "@zorviz/core";
 import { ServerStatus } from "../components/server-status";
 import { CloudStatus } from "../components/cloud-status";
-import { Wrench, Package, Settings, ChevronRight, Car, ClipboardList, TrendingUp, DatabaseBackup, Users, CalendarDays, Wallet } from "lucide-react";
+import { Wrench, Package, Settings, ChevronRight, Car, ClipboardList, TrendingUp, DatabaseBackup, Users, CalendarDays, Wallet, FileBarChart } from "lucide-react";
 import { DrawerCard } from "../components/drawer-card";
 import { BackupDialog } from "../features/backup/BackupDialog";
 import { api } from "../lib/api";
@@ -126,6 +126,15 @@ export default function DashboardPage() {
                 icon: Wallet,
                 href: "/expenses",
                 color: "from-rose-500 to-rose-600",
+            }]
+            : []),
+        ...(user?.role === "admin" || user?.role === "owner" || user?.role === "advisor"
+            ? [{
+                title: "Reports",
+                description: "P&L, VAT, Senior/PWD, productivity",
+                icon: FileBarChart,
+                href: "/reports",
+                color: "from-indigo-500 to-indigo-600",
             }]
             : []),
         {

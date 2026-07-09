@@ -205,7 +205,7 @@ Close formula becomes: expected = float + cash payments − drawer expenses **+ 
 
 ---
 
-## BACK-3-018 · Printable Documents & Reports Suite (PDF-first) · *Tier 1 implemented, pending verification*
+## BACK-3-018 · Printable Documents & Reports Suite (PDF-first) · *Tier 1+2 implemented, pending verification*
 
 **Priority:** 🔴 High (high-conversion feature set; **foundation/dependency of BACK-1-005 Hardware IO**)
 **Origin:** Owner request 2026-07-09 — catalog every printable document/report worth generating;
@@ -229,6 +229,11 @@ the same renderers later re-target 58/80mm thermal width when BACK-1-005 adds de
 **Tier 2 — follow-up items when Tier 1 lands:** P&L summary (period), Senior/PWD discount report
 (BIR compliance — OSCA IDs + amounts are captured), VAT summary (pro-rata breakdown), mechanic
 productivity (jobs + wrench time; commission/payroll input), payables report.
+*Tier 2 built 2026-07-09:* `/reports` page (staff-only dashboard tile) with period presets
+(Today/Week/Month/All/Custom) driving all five reports; Rust endpoints `financial_summary`
+(pro-rata VAT/COGS/discounts per decision B), `senior_pwd_report`, `mechanic_report`; payables
+reuses `listPayables`. All five E2E-verified via Playwright download capture — P&L, VAT set-aside
+(₱107.14 pro-rata on ₱1,000 partial), Senior/PWD empty-state, mechanic wrench time, ₱450 payable.
 
 **Tier 3 — later:** vehicle service-history printout, sales-by-period detail, stock-movement log,
 gate pass / release slip.

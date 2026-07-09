@@ -2,9 +2,9 @@ import { jsPDF } from "jspdf";
 import { formatMoney } from "@zorviz/core";
 import type { AppConfig } from "@zorviz/db";
 import { registerPdfFont, PDF_FONT_FAMILY } from "./pdf-font";
-import type { EodReport, SoaData } from "./reports-api";
+import type { EodReport, SoaData, FinancialSummary, SeniorPwdRow, MechanicRow } from "./reports-api";
 import type { JobTicket, PaymentRecord } from "./orders-api";
-import type { Part } from "./inventory-api";
+import type { Part, Payable } from "./inventory-api";
 
 // BACK-3-018 Tier 1: shared report-PDF infrastructure + the four document generators.
 // All documents follow D9: PDF download (the caller shows the saved-to-Downloads toast);
@@ -298,4 +298,172 @@ export function reorderListPdf(items: Part[], config: AppConfig | null, generate
     r.note("Suggested quantity restocks each item to twice its reorder point. Estimated cost uses the last recorded unit cost.");
     r.footer(generatedBy);
     return r.save(`reorder-list-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+// ---- Tier 2 documents (BACK-3-018) ----
+
+const fmtDur = (ms: number) => {
+    const mins = Math.round(ms / 60000);
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    return `${h}h ${mins % 60}m`;
+};
+
+/** 5. Profit & Loss summary for a period. */
+export function pnlPdf(data: FinancialSummary, period: string, config: AppConfig | null, generatedBy: string | null): string {
+    const cur = config?.currency_symbol ?? "";
+    const r = new ReportPdf();
+    r.header(config, "Profit & Loss Summary", period);
+
+    r.sectionTitle("Income (collections)");
+    if (data.payments_by_method.length) {
+        r.table(
+            [
+                { label: "Method", x: LEFT },
+                { label: "Count", x: 120, align: "right" },
+                { label: "Amount", x: RIGHT, align: "right" },
+            ],
+            data.payments_by_method.map((m) => [methodLabel(m.method), `${m.n}x`, formatMoney(m.total, cur)])
+        );
+    } else {
+        r.note("No collections in this period.");
+    }
+    r.kv("Revenue", formatMoney(data.revenue, cur), true);
+
+    r.sectionTitle("Expenses");
+    if (data.expenses_by_category.length) {
+        r.table(
+            [
+                { label: "Category", x: LEFT },
+                { label: "Amount", x: RIGHT, align: "right" },
+            ],
+            data.expenses_by_category.map((e) => [e.category, formatMoney(e.total, cur)])
+        );
+    } else {
+        r.note("No expenses recorded in this period.");
+    }
+    r.kv("Total expenses", formatMoney(data.expenses_total, cur), true);
+
+    r.sectionTitle("Result");
+    r.kv("Revenue", formatMoney(data.revenue, cur));
+    r.kv("- Parts cost of sales (pro-rata)", formatMoney(data.cogs, cur));
+    r.kv("Gross margin", formatMoney(data.revenue - data.cogs, cur));
+    r.kv("- Total expenses", formatMoney(data.expenses_total, cur));
+    r.kv("NET (revenue - expenses)", formatMoney(data.revenue - data.expenses_total, cur), true);
+    r.note("Cash-basis summary from collections and the expense log. A planning gauge, not the books of account.");
+    r.footer(generatedBy);
+    return r.save(`pnl-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+/** 6. VAT summary for a period (pro-rata per payment; collection basis). */
+export function vatSummaryPdf(data: FinancialSummary, period: string, config: AppConfig | null, generatedBy: string | null): string {
+    const cur = config?.currency_symbol ?? "";
+    const r = new ReportPdf();
+    r.header(config, "VAT Summary", period);
+    r.kv("Total collections", formatMoney(data.revenue, cur));
+    r.kv("VAT-exempt collections (Senior/PWD)", formatMoney(data.exempt_collections, cur));
+    r.kv("VATable collections", formatMoney(data.revenue - data.exempt_collections, cur));
+    r.kv("Discounts given (pro-rata)", formatMoney(data.discounts_given, cur));
+    r.kv("VAT COLLECTED - set aside for BIR", formatMoney(data.vat_collected, cur), true);
+    r.note(
+        "VAT is apportioned pro-rata per payment (payment share x the order's VAT), consistent with " +
+        "collection-basis service VAT. This is a set-aside planning gauge - your accountant's books govern the actual return."
+    );
+    r.footer(generatedBy);
+    return r.save(`vat-summary-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+/** 7. Senior/PWD discount record (BIR compliance). */
+export function seniorPwdPdf(rows: SeniorPwdRow[], period: string, config: AppConfig | null, generatedBy: string | null): string {
+    const cur = config?.currency_symbol ?? "";
+    const r = new ReportPdf();
+    r.header(config, "Senior Citizen / PWD Discount Record", period);
+    if (rows.length) {
+        r.table(
+            [
+                { label: "Date paid", x: LEFT },
+                { label: "Ref", x: 40 },
+                { label: "Name / ID No.", x: 65 },
+                { label: "Net sale", x: 138, align: "right" },
+                { label: "Discount", x: 165, align: "right" },
+                { label: "Total", x: RIGHT, align: "right" },
+            ],
+            rows.map((s) => [
+                fmtD(s.paid_at),
+                s.receipt_number ?? s.id.slice(0, 6),
+                `${(s.senior_pwd_name ?? "-").slice(0, 22)} / ${s.senior_pwd_id ?? "-"}`,
+                formatMoney(s.subtotal, cur),
+                formatMoney(s.senior_discount, cur),
+                formatMoney(s.total, cur),
+            ])
+        );
+        r.kv("Total discounts granted", formatMoney(rows.reduce((a, s) => a + s.senior_discount, 0), cur), true);
+        r.kv("Total VAT-exempt sales", formatMoney(rows.reduce((a, s) => a + s.total, 0), cur));
+    } else {
+        r.note("No Senior/PWD-discounted sales collected in this period.");
+    }
+    r.note("Statutory 20% discount on the VAT-exclusive amount; sales are VAT-exempt (RA 9994 / RA 10754). Collection-basis listing.");
+    r.footer(generatedBy);
+    return r.save(`senior-pwd-record-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+/** 8. Mechanic productivity for a period. */
+export function mechanicsPdf(rows: MechanicRow[], period: string, config: AppConfig | null, generatedBy: string | null): string {
+    const cur = config?.currency_symbol ?? "";
+    const r = new ReportPdf();
+    r.header(config, "Mechanic Productivity", period);
+    if (rows.length) {
+        r.table(
+            [
+                { label: "Mechanic", x: LEFT },
+                { label: "Jobs done", x: 95, align: "right" },
+                { label: "Avg time", x: 125, align: "right" },
+                { label: "Total time", x: 158, align: "right" },
+                { label: "Job value", x: RIGHT, align: "right" },
+            ],
+            rows.map((m) => [
+                m.name ?? m.assigned_mechanic_id.slice(0, 8),
+                String(m.jobs),
+                fmtDur(m.avg_ms),
+                fmtDur(m.total_ms),
+                formatMoney(m.revenue, cur),
+            ])
+        );
+    } else {
+        r.note("No completed, assigned jobs with timing in this period.");
+    }
+    r.note("Wrench time = Start Job to Mark as Done. Job value = totals of jobs completed in the period (not collections).");
+    r.footer(generatedBy);
+    return r.save(`mechanic-productivity-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+/** 9. Supplier payables (outstanding on-account receives). */
+export function payablesPdf(items: Payable[], config: AppConfig | null, generatedBy: string | null): string {
+    const cur = config?.currency_symbol ?? "";
+    const r = new ReportPdf();
+    r.header(config, "Supplier Payables", `As of ${new Date().toLocaleDateString()}`);
+    if (items.length) {
+        r.table(
+            [
+                { label: "Date", x: LEFT },
+                { label: "Item received", x: 45 },
+                { label: "Qty", x: 122, align: "right" },
+                { label: "Note", x: 132 },
+                { label: "Owed", x: RIGHT, align: "right" },
+            ],
+            items.map((p) => [
+                fmtD(p.created_at),
+                `${p.item_name} (${p.sku})`.slice(0, 34),
+                String(p.delta),
+                (p.note ?? "").slice(0, 18),
+                formatMoney(p.total_cost, cur),
+            ])
+        );
+        r.kv("TOTAL OWED TO SUPPLIERS", formatMoney(items.reduce((a, p) => a + p.total_cost, 0), cur), true);
+    } else {
+        r.note("No outstanding on-account receives.");
+    }
+    r.note("Settle a payable by recording the paying parts expense (it links to the receive automatically).");
+    r.footer(generatedBy);
+    return r.save(`payables-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
