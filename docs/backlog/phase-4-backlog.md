@@ -300,7 +300,7 @@ snapshots (cloud holds latest state only in v1; PITR could be a later premium ti
 **Depends on:** nothing new — data already lands cloud-side via v1.1/v1.2 push.
 
 **Acceptance Criteria:**
-- [ ] Protocol v2 pull spec written and LOCKED before implementation (like v1)
+- [x] Protocol v2 pull spec written and LOCKED before implementation — `cloud-sync-protocol.md` §10–11 (2026-07-10)
 - [ ] Full-cycle drill passes: wipe → recover → business tables match the cloud copy
 - [ ] Interrupted restore leaves a clean, retryable state (transactional)
 - [ ] Staff accounts restore with owner-controlled PIN reset; pin hashes never leave/return

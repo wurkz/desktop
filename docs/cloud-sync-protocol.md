@@ -1,4 +1,4 @@
-# Cloud Sync Protocol (v1.2 — LOCKED; v1 2026-07-08, v1.1/v1.2 2026-07-09)
+# Cloud Sync Protocol (v2 — LOCKED; v1 2026-07-08, v1.1/v1.2 2026-07-09, v2 pull 2026-07-10)
 
 > **Status:** LOCKED v1 (decisions in §9 confirmed) — implementation in progress, backend parked.
 > This is the single contract both sides build
@@ -92,7 +92,7 @@ Response:
 - Partial failure is **all-or-nothing per request** (backend applies the batch in a transaction);
   on any error the client keeps its old watermark and retries the same window later.
 
-### `POST /sync/pull`  (RESERVED — not v1)
+### `POST /sync/pull`  (superseded — v2 defines the pull as §10 Recovery, one-shot snapshot only)
 Reserved for multi-device / portal write-back. Shape TBD when we build bidirectional sync (§8).
 
 ## 5. Watermark & change tracking
@@ -176,3 +176,115 @@ Reserved for multi-device / portal write-back. Shape TBD when we build bidirecti
 3. **Encryption:** ✅ TLS-only for v1; app-layer diff encryption reserved (BACK-4-008).
 4. **`asset_types`:** ✅ included in sync.
 5. **`users` sync:** ✅ deferred for v1.
+
+---
+
+## 10. Protocol v2 — Recovery Pull (LOCKED 2026-07-10)
+
+> **Purpose:** disaster recovery (BACK-4-016 "Cloud Restore"). A shop's PC is gone; a fresh
+> Wurkz Shop install pulls the tenant's full data set back down, once. This section is the
+> whole of v2 — **push semantics (§4–§6) are unchanged.**
+
+### 10.1 Non-goals (explicit)
+
+- **NOT two-way / continuous sync.** No merge, no conflict resolution, no multi-device write.
+- **NOT partial or point-in-time restore.** The cloud holds latest-state only; the snapshot is
+  all-or-nothing. (PITR reserved as a possible later premium tier.)
+- **NOT a migration/export API.** Same tables, same whitelists as push — nothing extra leaves.
+
+### 10.2 Recovery authentication
+
+The old device token is presumed lost with the PC, so recovery has its own credential:
+
+- **Recovery code**: issued per tenant from the platform-admin panel (fits the manual-
+  subscription workflow; a disaster is a phone call anyway). Owner-self-serve issuance from
+  Wurkz Cloud may be added later without a protocol change.
+- Format: 10 chars, Crockford base32 (no 0/O/1/I ambiguity), displayed grouped `XXXXX-XXXXX`.
+- Stored **hashed** cloud-side; **single-use**; **expires 24 h** after issuance; issuance and
+  claim are audit-logged; claim endpoint is rate-limited (5/min/IP).
+- **On successful claim, all prior device tokens for the tenant are revoked** — the stolen
+  PC's token dies the moment the shop recovers elsewhere.
+
+### 10.3 Endpoints
+
+**`POST /recovery/claim`** (unauthenticated + rate-limited)
+```json
+{ "recovery_code": "XXXXXXXXXX" }
+```
+→ `200`:
+```json
+{ "protocol_version": 2, "tenant_id": "…", "shop_name": "…", "device_token": "…" }
+```
+The code is consumed atomically with token issuance. Errors: `404` unknown/used/expired code
+(deliberately indistinguishable), `402` subscription inactive (see 10.6), `429` rate limit.
+
+**`GET /sync/snapshot`** (Bearer device token — the newly claimed one or any valid one)
+→ `200`:
+```json
+{
+  "protocol_version": 2,
+  "snapshot_at": 1783600000000,
+  "tables": { "customers": [ … ], …, "shop_settings": [ … ], "staff_directory": [ … ] }
+}
+```
+- Contents: exactly the v1.2 table/column whitelists (§4/§5) — the same shapes push sends,
+  minus `tenant_id` (implied by the token). Nothing beyond the whitelists is ever returned.
+- Single gzip response. Shop datasets are MB-scale; chunking is reserved (a future `?table=`
+  filter) and NOT part of v2.
+- Repeatable: `GET` is read-only and may be retried freely while the token is valid.
+
+### 10.4 Desktop restore semantics
+
+1. Setup wizard offers **"Recover my shop from Wurkz Cloud"** beside fresh setup — available
+   ONLY while the local database is empty (setup not completed). **Never merges** into an
+   existing shop; a used database refuses recovery.
+2. Order of operations: run local migrations to latest → `claim` → `snapshot` → **write all
+   rows in one transaction** (an interrupted restore rolls back to a clean, retryable slate)
+   → write `app_config` (original `tenant_id` from claim — REQUIRED so future pushes continue
+   the same cloud tenant; `cloud_url`, new `device_token`, `sync_enabled=1`,
+   `last_synced_at = snapshot_at` so push resumes without a full resend) → apply
+   `shop_settings` row into `app_config` fields.
+3. Deterministic insert order (parent-before-child):
+   `customers → asset_types → assets → bookings → orders → order_items →
+   order_status_history → payments → suppliers → inventory → inventory_adjustments →
+   expenses → drawer_sessions → drawer_movements`.
+4. **Staff re-entry:** `staff_directory` rows recreate local users (id, name, role, is_active)
+   with **no credentials** — pin hashes never sync in either direction. The wizard's final step
+   creates the owner's login fresh (username + PIN) bound to the restored owner-role row;
+   remaining staff are restored in a "PIN not set" state and the owner assigns PINs from the
+   existing Staff page. Usernames are re-entered (they never sync).
+5. **Honesty screen:** before finishing, the wizard lists what did NOT come back — shop logo
+   file, license activation, device/QR pairings, staff usernames/PINs — with one-line fixes.
+
+### 10.5 Watermark & resume
+
+`last_synced_at = snapshot_at` (server clock, from the response). Every restored row's change
+marker ≤ `snapshot_at`, so the next push sends only genuinely new local changes. No full
+re-push after recovery.
+
+### 10.6 Subscription gate & retention
+
+- `claim` (and `snapshot`) require an **active subscription** on the tenant → otherwise `402`
+  with a human message ("Reactivate to recover — your data is safe").
+- **Retention after lapse: 90 days** (default; platform-admin tunable per tenant). Within it,
+  reactivate-and-recover always works. After it, data is eligible for deletion per the
+  retention policy; deletion is manual in the manual-subscription era, never silent-automatic.
+- Stated openly in the product: this is the honest churn lever, not a surprise.
+
+### 10.7 Versioning & errors
+
+- `protocol_version: 2` on the new endpoints only. Push keeps reporting `1` — v2 is additive;
+  a v1.2 desktop pushes to a v2 cloud unchanged.
+- Snapshot tables the desktop doesn't recognize are ignored (forward-compatible, mirrors the
+  push rule); tables the desktop expects but the snapshot lacks restore as empty.
+- Any non-200 leaves the local DB untouched (the transaction rule in 10.4).
+
+## 11. v2 decisions (confirmed 2026-07-10)
+
+1. **Pull = one-shot recovery snapshot only** ✅ (no two-way sync, no PITR, no partial).
+2. **Recovery auth = admin-issued, hashed, single-use, 24 h code** ✅; claim revokes all prior
+   device tokens for the tenant.
+3. **Restore only into an empty install** ✅ — never a merge.
+4. **Credentials never travel** ✅ — owner login recreated in the wizard; staff PINs reassigned.
+5. **Watermark = `snapshot_at`** ✅ — push resumes incrementally after recovery.
+6. **Gate: active subscription; 90-day post-lapse retention (tunable), no silent deletion** ✅.
