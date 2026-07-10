@@ -294,6 +294,17 @@ owed."* Free tier line: "Diskette-style backups are free forever. Never-lose-you
 6. **Verification:** E2E drill — seed shop, sync, wipe local DB, recover, byte-compare business
    tables; then the marketing screenshot is the drill's result.
 
+**Build split (owner structure 2026-07-10):**
+- **Part 1 — desktop:** the setup-wizard "I already use Wurkz — restore from the cloud" path
+  (connect → tenant-info → confirm shop → snapshot → transactional write → pick-your-account
+  PIN re-key → honesty screen). **Graceful-degradation rule:** the option lives only in the
+  wizard; unreachable cloud / bad token / 402 inactive → clear human message and a clean
+  return to fresh-setup, local DB untouched. No background behavior at all; a never-cloud
+  shop never sees a difference. (staff_directory widening already shipped 2026-07-10.)
+- **Part 2 — cloud:** GET /sync/tenant-info + GET /sync/snapshot (whitelists, gzip, 402 gate),
+  admin-panel "Issue replacement token" (revoke-all + issue in one click), retention window
+  fields + pre-deletion notice, audit log.
+
 **Explicitly out of scope:** two-way/multi-device sync, partial restores, point-in-time
 snapshots (cloud holds latest state only in v1; PITR could be a later premium tier).
 
@@ -358,11 +369,18 @@ SMS/month** to be added later as paid add-ons. When the bundle is exhausted, not
 degrade to email-only with a notice to the owner (never silent). Per-tenant monthly counter
 resets on billing cycle.
 
-**Cloud build:** `booking_requests` table + public page + confirm/decline UI on the shop
-dashboard + tenant notification settings (email on/off, SMS number, customer-SMS on/off) +
-Semaphore driver behind a notification interface (so the provider is swappable).
-**Desktop build:** inbox pull + ACK in the sync cycle; new bookings appear on the Bookings page
-with a "from online booking" badge; toast on arrival.
+**Build split (owner structure 2026-07-10):**
+- **Part 1 — desktop:** (a) migration: `bookings.request_id` (nullable; dedupe + push-whitelist
+  join column); (b) booking-inbox pull + ACK piggybacked on the existing 60s sync cycle;
+  (c) Bookings page "online booking" badge + arrival toast. **Silent-drop rule:** the inbox
+  fetch no-ops without noise when sync is disabled, the cloud is unreachable, the endpoint
+  doesn't exist yet (older cloud → 404), or the subscription is inactive (402/403) — same
+  fail-safe posture as the sync manager: local operation is never affected, nothing is logged
+  at the user's face, delivery simply resumes when conditions return.
+- **Part 2 — cloud:** `booking_requests` table + public slug page (slot grid w/ capacity,
+  QR poster) + confirm/decline UI + tenant settings (hours/slots/capacity, slug, notify email,
+  SMS number, customer-SMS toggle) + Semaphore driver behind a swappable notification
+  interface + 100 SMS/month counter + inbox/ack endpoints.
 
 **Acceptance Criteria:**
 - [ ] Protocol v2.1 §12 locked (inbox pull + ack, delivered-exactly-once)
