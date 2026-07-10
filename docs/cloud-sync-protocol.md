@@ -1,4 +1,4 @@
-# Cloud Sync Protocol (v2 — LOCKED; v1 2026-07-08, v1.1/v1.2 2026-07-09, v2 pull 2026-07-10)
+# Cloud Sync Protocol (v2.1 — LOCKED; v1 2026-07-08, v1.1/v1.2 2026-07-09, v2 pull + v2.1 booking inbox 2026-07-10)
 
 > **Status:** LOCKED v1 (decisions in §9 confirmed) — implementation in progress, backend parked.
 > This is the single contract both sides build
@@ -288,3 +288,57 @@ re-push after recovery.
 4. **Credentials never travel** ✅ — owner login recreated in the wizard; staff PINs reassigned.
 5. **Watermark = `snapshot_at`** ✅ — push resumes incrementally after recovery.
 6. **Gate: active subscription; 90-day post-lapse retention (tunable), no silent deletion** ✅.
+
+---
+
+## 12. Protocol v2.1 — Booking Inbox (LOCKED 2026-07-10)
+
+> **Purpose:** deliver cloud-originated online bookings (BACK-4-017) to the desktop without
+> breaking the one-writer-per-table rule. `bookings` stays desktop-owned and pushes up as
+> always; `booking_requests` is a **cloud-owned queue** the desktop drains. Additive — push
+> (§4–6) and recovery (§10) unchanged.
+
+### 12.1 Model
+
+Cloud table `booking_requests` (never synced as a table): `id`, `tenant_id`, `status`
+(`pending` → `confirmed`/`declined`; `confirmed` → `delivered` → `materialized`),
+`customer_name`, `customer_phone`, `customer_email?`, `asset_description`, `concern`,
+`requested_time`, `confirmed_time?`, `decline_reason?`, `booking_id?` (set at materialization),
+timestamps. Only `confirmed` requests ever reach the desktop.
+
+### 12.2 Endpoints (device token auth, same as push)
+
+**`GET /sync/booking-inbox`** → `200`:
+```json
+{ "protocol_version": 2, "requests": [ { "id": "…", "customer_name": "…",
+  "customer_phone": "…", "customer_email": null, "asset_description": "…",
+  "concern": "…", "confirmed_time": 1783700000000 } ] }
+```
+Returns requests in status `confirmed` only (not yet `delivered`). Read-only and repeatable.
+
+**`POST /sync/booking-ack`**
+```json
+{ "ids": ["…"] }
+```
+→ marks them `delivered`. **Delivered-exactly-once contract:** the desktop creates local
+bookings inside a transaction FIRST, then ACKs; if the ACK is lost, the next inbox fetch
+returns the same requests and the desktop dedupes by request id (local `bookings` gains a
+nullable `request_id` column — also added to the push whitelist so the cloud can mark
+`materialized` and link `booking_id` when the booking pushes up).
+
+### 12.3 Client behavior (desktop)
+
+- Piggybacks on the existing 60s connected cycle: `booking-inbox` → create local bookings
+  (find-or-create customer by exact mobile match; asset left unassigned — the shop attaches it
+  at drop-off) → `booking-ack`. Offline shops simply drain the queue on reconnect.
+- UI: booking appears in the Bookings page flagged "online booking"; arrival toast.
+
+### 12.4 Decisions (confirmed 2026-07-10)
+
+1. **Confirmation lives on the cloud** ✅ — the shop PC being offline must never block
+   confirming a customer; notifications (owner email/SMS, customer email/SMS post-confirm)
+   are entirely cloud-side and outside this protocol.
+2. **Queue + ACK with client-side dedupe by request id** ✅ (exactly-once materialization).
+3. **`bookings.request_id`** joins the push whitelist ✅ (additive column, v1.2 rules apply).
+4. **SMS provider** is a cloud implementation detail behind an interface (Semaphore first;
+   ~₱0.50–0.56/SMS ex-VAT) — never part of the protocol.

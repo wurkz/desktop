@@ -306,3 +306,49 @@ snapshots (cloud holds latest state only in v1; PITR could be a later premium ti
 - [ ] Staff accounts restore with owner-controlled PIN reset; pin hashes never leave/return
 - [ ] Wizard honestly lists what does not come back (logo, license, device pairing)
 - [ ] Subscription gate + retention/grace policy decided and enforced
+
+---
+
+## BACK-4-017 · Online Booking (cloud) → desktop delivery, with owner-confirm + email/SMS
+
+**Priority:** 🔴 High (premium; supersedes/absorbs BACK-4-007's booking half)
+**Origin:** Owner request 2026-07-10.
+
+**Flow (locked):**
+1. **Public booking page** per shop: `cloud/book/{shop-code}` — no customer account needed.
+   Fields: name, mobile, email (optional), what to bring in (asset description), concern,
+   preferred date + time slot. Anti-spam: honeypot + rate limit per IP + per-phone dedupe.
+2. Request lands **cloud-side** as `booking_requests` (status `pending`) — deliberately NOT the
+   synced `bookings` table: `bookings` stays desktop-owned; `booking_requests` is a cloud-owned
+   queue (one-writer-per-table principle, no conflicts).
+3. **Owner/admin notified**: email to the tenant's cloud users + optional SMS to a **settable
+   notification number** (tenant setting, e.g. the owner's or admin's phone).
+4. **Confirmation is required and happens on Wurkz Cloud** (owner's phone browser works — the
+   shop PC being offline must not block confirming): confirm (optionally adjusting the slot) or
+   decline with a short reason. On confirm → customer notified by **email (if given) + optional
+   SMS**; on decline → polite notice. No customer notification before confirmation.
+5. **Delivery to the desktop** — protocol v2.1 booking inbox (see `cloud-sync-protocol.md`
+   §12): the desktop's existing 60s sync cycle also pulls confirmed requests, creates the local
+   booking (find-or-create customer by mobile), and ACKs. Offline shop = requests queue until
+   it's back; the local booking then syncs up via the normal push and the cloud links it.
+
+**SMS cost check (2026-07-10):** local gateway (Semaphore) ≈ **₱0.50–0.56/SMS ex-VAT**, prepaid
+credits, no setup fee, all PH networks; international providers 2.4–20× more. A fully-notified
+booking ≈ 2 SMS ≈ **₱1.12** — absorbable in the subscription price or sold as prepaid SMS
+credits. Decision at build: bundle N SMS/month with the plan vs. credit top-ups (lean: bundle,
+it's peanuts and feels premium). Email is free either way (SMTP from Hostinger).
+
+**Cloud build:** `booking_requests` table + public page + confirm/decline UI on the shop
+dashboard + tenant notification settings (email on/off, SMS number, customer-SMS on/off) +
+Semaphore driver behind a notification interface (so the provider is swappable).
+**Desktop build:** inbox pull + ACK in the sync cycle; new bookings appear on the Bookings page
+with a "from online booking" badge; toast on arrival.
+
+**Acceptance Criteria:**
+- [ ] Protocol v2.1 §12 locked (inbox pull + ack, delivered-exactly-once)
+- [ ] Public page → pending request → owner email (+SMS if set) E2E
+- [ ] Confirm on cloud → customer email (+SMS if enabled); decline path works
+- [ ] Confirmed booking appears on the desktop Bookings page within one sync cycle when online,
+      and after reconnect when the shop was offline (no loss, no duplicates)
+- [ ] Desktop-side booking links back to the request (cloud shows "in the shop calendar")
+- [ ] Spam/dedupe protections in place on the public page
