@@ -324,8 +324,8 @@ snapshots (cloud holds latest state only in v1; PITR could be a later premium ti
    Fields: name, mobile, email (optional), what to bring in (asset description), concern,
    preferred date + time slot. Anti-spam: honeypot + rate limit per IP + per-phone dedupe.
    **Slot model (decided 2026-07-10 — shop-hours grid + real occupancy + capacity):** the shop
-   sets open days/hours/slot length AND **capacity per slot** (e.g. 4 cars per hour) once in
-   Wurkz Cloud settings; a slot greys out only when (synced desktop bookings + CONFIRMED online
+   sets open days/hours/slot length AND **capacity per slot** (owner-settable; **default 1** —
+   e.g. raise to 4 cars per hour for a bigger bay) once in Wurkz Cloud settings; a slot greys out only when (synced desktop bookings + CONFIRMED online
    requests) occupying it reach capacity — remaining seats shown ("2 slots left"). Pending
    requests do NOT consume capacity — the owner resolves oversubscription at confirm (adjusting
    the time is built in). Page states "subject to confirmation"; an offline shop's stale grid
