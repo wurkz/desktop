@@ -351,9 +351,12 @@ snapshots (cloud holds latest state only in v1; PITR could be a later premium ti
 
 **SMS cost check (2026-07-10):** local gateway (Semaphore) ≈ **₱0.50–0.56/SMS ex-VAT**, prepaid
 credits, no setup fee, all PH networks; international providers 2.4–20× more. A fully-notified
-booking ≈ 2 SMS ≈ **₱1.12** — absorbable in the subscription price or sold as prepaid SMS
-credits. Decision at build: bundle N SMS/month with the plan vs. credit top-ups (lean: bundle,
-it's peanuts and feels premium). Email is free either way (SMTP from Hostinger).
+booking ≈ 2 SMS ≈ **₱1.12**. Email is free (SMTP from Hostinger).
+**SMS plan (decided 2026-07-10):** **bundled 100 SMS/month**, included in the monthly
+subscription price (cost to us ≤ ~₱56/month/shop at full burn). Upgrade tiers **250 and 500
+SMS/month** to be added later as paid add-ons. When the bundle is exhausted, notifications
+degrade to email-only with a notice to the owner (never silent). Per-tenant monthly counter
+resets on billing cycle.
 
 **Cloud build:** `booking_requests` table + public page + confirm/decline UI on the shop
 dashboard + tenant notification settings (email on/off, SMS number, customer-SMS on/off) +
