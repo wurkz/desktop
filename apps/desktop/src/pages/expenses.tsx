@@ -50,10 +50,36 @@ export default function ExpensesPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
+    // BACK-2-030: expenses are reviewed by month — filter by period, window within it.
+    const now = new Date();
+    const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const monthRange = useCallback((): { from: number; to: number } => {
+        const [y, m] = month.split("-").map(Number);
+        return { from: new Date(y, m - 1, 1).getTime(), to: new Date(y, m, 1).getTime() - 1 };
+    }, [month]);
     const refresh = useCallback(() => {
-        listExpenses().then(setExpenses).catch(() => {}).finally(() => setLoaded(true));
-    }, []);
+        const { from, to } = monthRange();
+        listExpenses({ from, to, limit: 100, offset: 0 })
+            .then((rows) => { setExpenses(rows); setHasMore(rows.length === 100); })
+            .catch(() => {})
+            .finally(() => setLoaded(true));
+    }, [monthRange]);
     useEffect(() => refresh(), [refresh]);
+    const loadMore = async () => {
+        setLoadingMore(true);
+        try {
+            const { from, to } = monthRange();
+            const rows = await listExpenses({ from, to, limit: 100, offset: expenses.length });
+            setExpenses((e) => [...e, ...rows]);
+            setHasMore(rows.length === 100);
+        } catch {
+            /* retry via the button */
+        } finally {
+            setLoadingMore(false);
+        }
+    };
 
     const openAdd = useCallback((presetSettleId?: string) => {
         setCategory("parts");
@@ -154,8 +180,18 @@ export default function ExpensesPage() {
             </header>
 
             <main className="p-4 max-w-md mx-auto space-y-3">
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="exp-month" className="text-sm text-muted-foreground shrink-0">Month</Label>
+                    <input
+                        id="exp-month"
+                        type="month"
+                        value={month}
+                        onChange={(e) => e.target.value && setMonth(e.target.value)}
+                        className="rounded-md border px-2 py-1.5 text-sm bg-background"
+                    />
+                </div>
                 {loaded && expenses.length === 0 && (
-                    <p className="text-muted-foreground text-center py-10">No expenses recorded yet.</p>
+                    <p className="text-muted-foreground text-center py-10">No expenses in this month.</p>
                 )}
                 {expenses.map((e) => (
                     <Card key={e.id} className={e.voided === 1 ? "opacity-60" : ""}>
@@ -183,6 +219,13 @@ export default function ExpensesPage() {
                         </CardContent>
                     </Card>
                 ))}
+                {hasMore && (
+                    <div className="flex justify-center pt-2">
+                        <Button variant="outline" size="sm" onClick={() => void loadMore()} disabled={loadingMore}>
+                            {loadingMore ? "Loading…" : "Load more"}
+                        </Button>
+                    </div>
+                )}
             </main>
 
             <Dialog open={addOpen} onOpenChange={(o) => { if (!saving && !o) closeAdd(); }}>

@@ -26,15 +26,31 @@ pub async fn list_inventory(
         return Err(StatusCode::UNAUTHORIZED);
     }
     let low_only = params.get("low").map(|s| s == "1").unwrap_or(false);
-    let sql = if low_only {
-        "SELECT * FROM inventory WHERE stock_on_hand <= reorder_point ORDER BY name LIMIT 1000"
+    // BACK-2-030: server-side search + windowed paging. Search must live here — a client
+    // filter over a capped page makes items beyond the cap unfindable. The low-stock view
+    // stays a single big page (it feeds the reorder-list PDF and is naturally small).
+    let q = params.get("q").map(|s| s.trim().to_string()).unwrap_or_default();
+    let limit: i64 = params.get("limit").and_then(|s| s.parse().ok()).unwrap_or(100).clamp(1, 500);
+    let offset: i64 = params.get("offset").and_then(|s| s.parse().ok()).unwrap_or(0).max(0);
+    let like = format!("%{}%", q);
+    let rows = if low_only {
+        sqlx::query("SELECT * FROM inventory WHERE stock_on_hand <= reorder_point ORDER BY name LIMIT 1000")
+            .fetch_all(&state.pool)
+            .await
     } else {
-        "SELECT * FROM inventory ORDER BY name LIMIT 1000"
-    };
-    let rows = sqlx::query(sql)
+        sqlx::query(
+            "SELECT * FROM inventory WHERE (? = '' OR sku LIKE ? OR name LIKE ? OR description LIKE ?)              ORDER BY name LIMIT ? OFFSET ?",
+        )
+        .bind(&q)
+        .bind(&like)
+        .bind(&like)
+        .bind(&like)
+        .bind(limit)
+        .bind(offset)
         .fetch_all(&state.pool)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(rows.iter().map(|r| Value::Object(row_to_json(r))).collect()))
 }
 

@@ -32,11 +32,13 @@ pub async fn customer_directory(
                     WHERE p.order_id = o.id), 0)), 0) AS balance \
          FROM customers c \
          WHERE c.deleted_at IS NULL AND (? = '' OR c.name LIKE ? OR c.phone LIKE ?) \
-         ORDER BY c.name COLLATE NOCASE LIMIT 300",
+         ORDER BY c.name COLLATE NOCASE LIMIT ? OFFSET ?",
     )
     .bind(q.trim())
     .bind(&like)
     .bind(&like)
+    .bind(params.get("limit").and_then(|s| s.parse::<i64>().ok()).unwrap_or(100).clamp(1, 500))
+    .bind(params.get("offset").and_then(|s| s.parse::<i64>().ok()).unwrap_or(0).max(0))
     .fetch_all(&state.pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

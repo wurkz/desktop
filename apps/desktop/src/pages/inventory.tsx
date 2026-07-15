@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Button,
@@ -59,22 +59,34 @@ export default function InventoryPage() {
     const [note, setNote] = useState("");
     const fileInput = useRef<HTMLInputElement>(null);
 
+    // BACK-2-030: search + paging are server-side (a client filter over a capped page makes
+    // items beyond the cap unfindable). Low-stock stays one full page for the reorder PDF.
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const refresh = useCallback(() => {
-        listInventory()
-            .then(setItems)
+        listInventory({ q: query.trim(), lowOnly, limit: 100, offset: 0 })
+            .then((rows) => { setItems(rows); setHasMore(!lowOnly && rows.length === 100); })
             .catch(() => {})
             .finally(() => setLoaded(true));
-    }, []);
-    useEffect(() => refresh(), [refresh]);
+    }, [query, lowOnly]);
+    useEffect(() => {
+        const t = setTimeout(refresh, query ? 250 : 0); // debounce typing
+        return () => clearTimeout(t);
+    }, [refresh, query]);
+    const loadMore = async () => {
+        setLoadingMore(true);
+        try {
+            const rows = await listInventory({ q: query.trim(), limit: 100, offset: items.length });
+            setItems((it) => [...it, ...rows]);
+            setHasMore(rows.length === 100);
+        } catch {
+            /* retry via the button */
+        } finally {
+            setLoadingMore(false);
+        }
+    };
 
-    const shown = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        return items.filter((p) => {
-            if (lowOnly && p.stock_on_hand > p.reorder_point) return false;
-            if (q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q)) return false;
-            return true;
-        });
-    }, [items, query, lowOnly]);
+    const shown = items; // server does the filtering now
 
     // CSV import: name[, sku, description, stock, reorder_point, unit_cost, unit_price]
     const onCsvPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -210,6 +222,13 @@ export default function InventoryPage() {
                 <p className="text-xs text-muted-foreground">
                     CSV columns: <span className="font-mono">name</span> (required), <span className="font-mono">sku, description, stock, reorder_point, unit_cost, unit_price</span> (money in {currency || "major"} units). Duplicate SKUs/names are skipped.
                 </p>
+                {hasMore && !lowOnly && (
+                    <div className="flex justify-center pt-2">
+                        <Button variant="outline" size="sm" onClick={() => void loadMore()} disabled={loadingMore}>
+                            {loadingMore ? "Loading…" : "Load more items"}
+                        </Button>
+                    </div>
+                )}
             </main>
 
             {(creating || editing) && (

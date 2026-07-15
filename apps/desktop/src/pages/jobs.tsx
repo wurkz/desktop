@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "@zorviz/ui";
+import { Button, Card, CardContent } from "@zorviz/ui";
 import { ArrowLeft } from "lucide-react";
 import { formatMoney } from "@zorviz/core";
 import { listJobs, listAllJobs, type JobSummary } from "../lib/orders-api";
@@ -93,12 +93,27 @@ export default function JobsPage() {
     const [customFrom, setCustomFrom] = useState("");
     const [customTo, setCustomTo] = useState("");
 
+    // BACK-2-030: the staff view is windowed (newest 100 + Load more) — it grows forever.
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     useEffect(() => {
-        (mine ? listJobs(true) : listAllJobs())
-            .then(setJobs)
+        (mine ? listJobs(true) : listAllJobs(100, 0))
+            .then((rows) => { setJobs(rows); setHasMore(!mine && rows.length === 100); })
             .catch(() => {})
             .finally(() => setLoaded(true));
     }, [mine]);
+    const loadMore = async () => {
+        setLoadingMore(true);
+        try {
+            const rows = await listAllJobs(100, jobs.length);
+            setJobs((j) => [...j, ...rows]);
+            setHasMore(rows.length === 100);
+        } catch {
+            /* leave hasMore as-is; user can retry */
+        } finally {
+            setLoadingMore(false);
+        }
+    };
 
     // Status filter chips (staff view) — only statuses that are actually present.
     const presentStatuses = useMemo(() => STATUS_ORDER.filter((st) => jobs.some((j) => j.status === st)), [jobs]);
@@ -228,6 +243,13 @@ export default function JobsPage() {
                         </CardContent>
                     </Card>
                 ))}
+                {!mine && hasMore && (
+                    <div className="flex justify-center pt-2">
+                        <Button variant="outline" size="sm" onClick={() => void loadMore()} disabled={loadingMore}>
+                            {loadingMore ? "Loading…" : "Load older jobs"}
+                        </Button>
+                    </div>
+                )}
             </main>
         </div>
     );

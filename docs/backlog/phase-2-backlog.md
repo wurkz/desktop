@@ -575,3 +575,30 @@ OpenDyslexic toggle (BACK-2-C0xx / BACK-2-025).
 - [ ] Works for every role (Appearance is a personal section per BACK-2-015)
 
 ---
+
+---
+
+## BACK-2-030 · List pagination & windowing · *implemented, pending verification*
+
+**Priority:** 🟡 Medium (performance debt that compounds daily) — owner catch 2026-07-15: inventory
+had no pagination. Audit found worse: unbounded lists and silent caps.
+
+**Audit → fix map:**
+| Module | Was | Now |
+|---|---|---|
+| Inventory | LIMIT 1000 + CLIENT-side search (items past cap unfindable) | server-side search + 100-row windows + Load more; low-stock stays one page (feeds reorder PDF) |
+| Jobs (staff) | unbounded (every order ever) | newest 100 + "Load older jobs" |
+| Expenses | silent LIMIT 200 | month filter (default current) + Load more within month |
+| Customers | LIMIT 300 browse | 100-row windows + Load more (search already server-side) |
+| Bookings scope=all | unbounded (no UI caller) | server cap 500 (future-proofing only) |
+| Suppliers | unbounded | deliberately skipped (dozens in practice) — revisit at ~200 |
+
+Pattern: `limit`/`offset` params (default 100, cap 500), "Load more" buttons (touch-friendly,
+matches recent-first usage) — no numbered pages. E2E: seeded 150 parts → first window 100 →
+Load more appends → deep search finds item #142 → cleanup; expenses month switch shows correct
+empty state.
+
+**Acceptance Criteria:**
+- [ ] Inventory search finds any SKU regardless of catalog size
+- [ ] Jobs/customers/inventory Load more appends without duplicates
+- [ ] Expenses month filter + within-month window

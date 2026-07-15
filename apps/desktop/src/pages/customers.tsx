@@ -54,12 +54,30 @@ export default function CustomersPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
+    // BACK-2-030: windowed browse (search already runs server-side, so anyone is findable).
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     useEffect(() => {
         const t = setTimeout(() => {
-            customerDirectory(q).then(setRows).catch(() => {}).finally(() => setLoaded(true));
+            customerDirectory(q, 100, 0)
+                .then((rs) => { setRows(rs); setHasMore(rs.length === 100); })
+                .catch(() => {})
+                .finally(() => setLoaded(true));
         }, q ? 250 : 0);
         return () => clearTimeout(t);
     }, [q, refresh]);
+    const loadMore = async () => {
+        setLoadingMore(true);
+        try {
+            const rs = await customerDirectory(q, 100, rows.length);
+            setRows((r) => [...r, ...rs]);
+            setHasMore(rs.length === 100);
+        } catch {
+            /* retry via the button */
+        } finally {
+            setLoadingMore(false);
+        }
+    };
 
     const visible = useMemo(() => {
         const filtered = balanceOnly ? rows.filter((r) => r.balance > 0) : rows;
@@ -222,6 +240,13 @@ export default function CustomersPage() {
                         </button>
                     ))}
                 </div>
+                {hasMore && (
+                    <div className="flex justify-center pt-2">
+                        <Button variant="outline" size="sm" onClick={() => void loadMore()} disabled={loadingMore}>
+                            {loadingMore ? "Loading…" : "Load more customers"}
+                        </Button>
+                    </div>
+                )}
             </main>
 
             <ImportResultDialog

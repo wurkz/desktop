@@ -23,7 +23,7 @@ pub async fn list_bookings(
     require_staff(&state, &headers).map_err(|s| (s, "staff only".to_string()))?;
     let all = params.get("scope").map(|s| s == "all").unwrap_or(false);
     let sql = if all {
-        "SELECT * FROM bookings ORDER BY scheduled_time ASC"
+        "SELECT * FROM bookings ORDER BY scheduled_time DESC LIMIT 500"
     } else {
         "SELECT * FROM bookings WHERE status IN ('pending','confirmed') ORDER BY scheduled_time ASC"
     };

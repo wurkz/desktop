@@ -1495,7 +1495,12 @@ pub async fn list_orders(
         .fetch_all(&state.pool)
         .await
     } else if params.get("scope").map(|s| s.as_str()) == Some("all") {
-        sqlx::query("SELECT * FROM orders ORDER BY created_at DESC")
+        // BACK-2-030: the management Jobs view is windowed — it grows forever otherwise.
+        let limit: i64 = params.get("limit").and_then(|s| s.parse().ok()).unwrap_or(100).clamp(1, 500);
+        let offset: i64 = params.get("offset").and_then(|s| s.parse().ok()).unwrap_or(0).max(0);
+        sqlx::query("SELECT * FROM orders ORDER BY created_at DESC LIMIT ? OFFSET ?")
+            .bind(limit)
+            .bind(offset)
             .fetch_all(&state.pool)
             .await
     } else {

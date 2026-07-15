@@ -28,8 +28,15 @@ export function createInventory(input: {
 }
 
 // Full inventory list (optionally only items at/below their reorder point).
-export function listInventory(lowOnly = false): Promise<Part[]> {
-    return api.get<Part[]>(`/api/inventory/all${lowOnly ? "?low=1" : ""}`);
+// BACK-2-030: search runs server-side (a client filter over a capped page can't find
+// everything); low-stock stays one big page (feeds the reorder-list PDF, naturally small).
+export function listInventory(opts: { q?: string; lowOnly?: boolean; limit?: number; offset?: number } = {}): Promise<Part[]> {
+    if (opts.lowOnly) return api.get<Part[]>("/api/inventory/all?low=1");
+    const p = new URLSearchParams();
+    if (opts.q) p.set("q", opts.q);
+    p.set("limit", String(opts.limit ?? 100));
+    p.set("offset", String(opts.offset ?? 0));
+    return api.get<Part[]>(`/api/inventory/all?${p}`);
 }
 
 export function updateInventory(

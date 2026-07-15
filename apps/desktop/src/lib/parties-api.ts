@@ -13,8 +13,8 @@ export interface CustomerRow {
     created_at: number;
 }
 
-export function customerDirectory(q = ""): Promise<CustomerRow[]> {
-    return api.get<CustomerRow[]>(`/api/customers/all?q=${encodeURIComponent(q)}`);
+export function customerDirectory(q = "", limit = 100, offset = 0): Promise<CustomerRow[]> {
+    return api.get<CustomerRow[]>(`/api/customers/all?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`);
 }
 
 export interface CustomerRecord {

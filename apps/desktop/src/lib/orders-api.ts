@@ -131,9 +131,9 @@ export function listJobs(assignedToMe = false): Promise<JobSummary[]> {
     return api.get<JobSummary[]>(`/api/orders${assignedToMe ? "?assigned=me" : ""}`);
 }
 
-// All jobs, every status (management view for admin/advisor).
-export function listAllJobs(): Promise<JobSummary[]> {
-    return api.get<JobSummary[]>("/api/orders?scope=all");
+// All jobs, every status (management view for admin/advisor). BACK-2-030: windowed.
+export function listAllJobs(limit = 100, offset = 0): Promise<JobSummary[]> {
+    return api.get<JobSummary[]>(`/api/orders?scope=all&limit=${limit}&offset=${offset}`);
 }
 
 export function assignOrder(orderId: string, mechanicId: string | null): Promise<JobTicket> {

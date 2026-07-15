@@ -23,8 +23,13 @@ export const EXPENSE_CATEGORIES = [
     { key: "misc", label: "Miscellaneous" },
 ] as const;
 
-export function listExpenses(): Promise<Expense[]> {
-    return api.get<Expense[]>("/api/expenses");
+export function listExpenses(opts: { from?: number; to?: number; limit?: number; offset?: number } = {}): Promise<Expense[]> {
+    const p = new URLSearchParams();
+    if (opts.from != null) p.set("from", String(opts.from));
+    if (opts.to != null) p.set("to", String(opts.to));
+    p.set("limit", String(opts.limit ?? 100));
+    p.set("offset", String(opts.offset ?? 0));
+    return api.get<Expense[]>(`/api/expenses?${p}`);
 }
 
 export function createExpense(input: {

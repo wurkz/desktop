@@ -3,7 +3,7 @@
 // (leakage) — both sync to the cloud for the owner's remote dashboard.
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     Json,
 };
@@ -18,16 +18,30 @@ const CATEGORIES: [&str; 5] = ["parts", "salary", "utilities", "rent", "misc"];
 
 // ---- Expenses (BACK-3-010) ----
 
-/// GET /api/expenses — recent expenses, newest first (voided included, flagged). Staff only.
+/// GET /api/expenses?from=&to=&limit=&offset= — expenses in a period, newest first (voided
+/// included, flagged). BACK-2-030: expenses are reviewed by month, so the page filters by
+/// period and windows within it instead of a silent global cap. Staff only.
 pub async fn list_expenses(
     State(state): State<ApiState>,
     headers: HeaderMap,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Value>, StatusCode> {
     require_staff(&state, &headers)?;
-    let rows = sqlx::query("SELECT * FROM expenses ORDER BY created_at DESC LIMIT 200")
-        .fetch_all(&state.pool)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let from: i64 = params.get("from").and_then(|s| s.parse().ok()).unwrap_or(0);
+    let to: i64 = params.get("to").and_then(|s| s.parse().ok()).unwrap_or(i64::MAX);
+    let limit: i64 = params.get("limit").and_then(|s| s.parse().ok()).unwrap_or(100).clamp(1, 500);
+    let offset: i64 = params.get("offset").and_then(|s| s.parse().ok()).unwrap_or(0).max(0);
+    let rows = sqlx::query(
+        "SELECT * FROM expenses WHERE created_at >= ? AND created_at <= ? \
+         ORDER BY created_at DESC LIMIT ? OFFSET ?",
+    )
+    .bind(from)
+    .bind(to)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(Value::Array(rows.iter().map(|r| Value::Object(row_to_json(r))).collect())))
 }
 
