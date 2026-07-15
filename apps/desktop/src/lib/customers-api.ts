@@ -14,9 +14,20 @@ export function createCustomer(input: {
     return api.post<Customer>("/api/customers", input);
 }
 
-// Bulk CSV import (rows already parsed client-side). Dedupes by name+phone server-side.
+// Bulk CSV import (rows already parsed client-side). Dedupes by name+phone server-side
+// (against the DB and within the batch). skipped_rows are display-only, never persisted.
+export interface CustomerImportResult {
+    imported: number;
+    skipped: number;
+    skipped_rows: Record<string, string>[]; // name, phone, email, address, reason
+}
+
 export function importCustomers(
     customers: { name: string; phone?: string; email?: string; address?: string }[]
-): Promise<{ imported: number; skipped: number }> {
-    return api.post<{ imported: number; skipped: number }>("/api/customers/import", { customers });
+): Promise<CustomerImportResult> {
+    return api.post<CustomerImportResult>("/api/customers/import", { customers });
+}
+
+export function deleteCustomer(id: string): Promise<{ ok: boolean }> {
+    return api.del<{ ok: boolean }>(`/api/customers/${id}`);
 }

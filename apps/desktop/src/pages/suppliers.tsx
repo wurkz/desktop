@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Button,
@@ -10,16 +10,20 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@zorviz/ui";
-import { ArrowLeft, Truck, ChevronRight, Plus } from "lucide-react";
+import { ArrowLeft, Truck, ChevronRight, Plus, Upload } from "lucide-react";
 import { formatMoney } from "@zorviz/core";
-import { listSupplierRecords, createSupplier, type SupplierRow } from "../lib/parties-api";
+import { listSupplierRecords, createSupplier, importSuppliers, type SupplierRow, type SupplierImportResult } from "../lib/parties-api";
+import { ImportResultDialog } from "../components/import-result-dialog";
 import { ApiError } from "../lib/api";
+import { parseCsv, pick } from "../lib/csv";
 import { useAppConfigStore } from "../stores/app-config";
+import { useAuthStore } from "../stores/auth";
 
 // Supplier directory: who the shop buys from, with outstanding payables at a glance.
 export default function SuppliersPage() {
     const navigate = useNavigate();
     const currency = useAppConfigStore((s) => s.config?.currency_symbol ?? "");
+    const isAdmin = useAuthStore((s) => s.user?.role === "admin" || s.user?.role === "owner");
     const [rows, setRows] = useState<SupplierRow[]>([]);
     const [loaded, setLoaded] = useState(false);
     const [addOpen, setAddOpen] = useState(false);
@@ -31,6 +35,40 @@ export default function SuppliersPage() {
         listSupplierRecords().then(setRows).catch(() => {}).finally(() => setLoaded(true));
     }, []);
     useEffect(() => refresh(), [refresh]);
+
+    // Suppliers CSV import (mirrors the customers-page import). The skipped-rows result is
+    // display-only — it lives in this state until the dialog closes.
+    const csvInput = useRef<HTMLInputElement>(null);
+    const [importResult, setImportResult] = useState<SupplierImportResult | null>(null);
+    const [importError, setImportError] = useState("");
+    const [importBusy, setImportBusy] = useState(false);
+
+    const onCsvPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        setImportBusy(true);
+        setImportError("");
+        try {
+            const parsed = parseCsv(await file.text()).map((r) => ({
+                name: pick(r, "name", "supplier", "supplier_name", "company"),
+                contact_person: pick(r, "contact_person", "contact", "person") || undefined,
+                phone: pick(r, "phone", "mobile", "contact_no", "phone_number") || undefined,
+                address: pick(r, "address") || undefined,
+                notes: pick(r, "notes", "note") || undefined,
+            }));
+            if (parsed.length === 0) {
+                setImportError("No usable rows found. Expected a header row with at least a `name` column.");
+                return;
+            }
+            setImportResult(await importSuppliers(parsed));
+            refresh();
+        } catch (err) {
+            setImportError(err instanceof Error ? `Import failed: ${err.message}` : "Import failed.");
+        } finally {
+            setImportBusy(false);
+        }
+    };
 
     const openAdd = () => {
         setForm({ name: "", contact_person: "", phone: "", address: "", notes: "" });
@@ -66,12 +104,23 @@ export default function SuppliersPage() {
                 </button>
                 <Truck className="w-5 h-5 text-primary" />
                 <h1 className="text-lg font-bold flex-1">Suppliers</h1>
+                {isAdmin && (
+                    <>
+                        <input ref={csvInput} type="file" accept=".csv,text/csv" className="hidden" onChange={onCsvPicked} />
+                        <Button variant="outline" size="sm" disabled={importBusy} onClick={() => csvInput.current?.click()}>
+                            <Upload className="w-4 h-4 mr-1.5" />
+                            {importBusy ? "Importing…" : "Import CSV"}
+                        </Button>
+                    </>
+                )}
                 <Button size="sm" onClick={openAdd}>
                     <Plus className="w-4 h-4 mr-1" /> New
                 </Button>
             </header>
 
             <main className="p-4 max-w-2xl mx-auto space-y-3">
+                {importError && <p className="text-sm text-destructive">{importError}</p>}
+
                 {loaded && rows.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-8">
                         No suppliers yet — add one here, or type a name when receiving stock and the record is created for you.
@@ -102,6 +151,20 @@ export default function SuppliersPage() {
                     ))}
                 </div>
             </main>
+
+            <ImportResultDialog
+                title="Supplier import"
+                columns={[
+                    { key: "name", label: "Name" },
+                    { key: "contact_person", label: "Contact person" },
+                    { key: "phone", label: "Phone" },
+                    { key: "address", label: "Address" },
+                    { key: "notes", label: "Notes" },
+                    { key: "reason", label: "Reason" },
+                ]}
+                result={importResult}
+                onClose={() => setImportResult(null)}
+            />
 
             <Dialog open={addOpen} onOpenChange={(o) => { if (!saving) setAddOpen(o); }}>
                 <DialogContent className="max-w-sm">

@@ -16,7 +16,7 @@ use crate::auth::ApiState;
 // whitelists (protocol §5 / cloud SyncController::TABLES) — the fixed lists are a defense:
 // snapshot keys never reach SQL directly. `tenant_id: true` = local schema requires it.
 const TABLES: &[(&str, bool, &[&str])] = &[
-    ("customers", true, &["id", "name", "phone", "email", "address", "notes", "created_at", "updated_at"]),
+    ("customers", true, &["id", "name", "phone", "email", "address", "notes", "created_at", "updated_at", "deleted_at"]),
     ("asset_types", true, &["id", "key", "name", "icon", "fields", "show_on_create", "sort_order", "created_at", "updated_at"]),
     ("assets", true, &["id", "owner_id", "type", "specs", "created_at", "updated_at", "deleted_at"]),
     ("bookings", false, &["id", "customer_name", "customer_phone", "note", "scheduled_time", "status", "asset_id", "customer_id", "request_id", "created_at", "updated_at"]),

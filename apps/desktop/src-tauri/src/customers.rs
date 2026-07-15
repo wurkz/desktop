@@ -31,7 +31,7 @@ pub async fn customer_directory(
                 AND o.total > COALESCE((SELECT SUM(p.amount) FROM payments p \
                     WHERE p.order_id = o.id), 0)), 0) AS balance \
          FROM customers c \
-         WHERE (? = '' OR c.name LIKE ? OR c.phone LIKE ?) \
+         WHERE c.deleted_at IS NULL AND (? = '' OR c.name LIKE ? OR c.phone LIKE ?) \
          ORDER BY c.name COLLATE NOCASE LIMIT 300",
     )
     .bind(q.trim())
@@ -146,4 +146,57 @@ pub async fn update_customer(
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "read failed".to_string()))?;
     Ok(Json(Value::Object(row_to_json(&row))))
+}
+
+/// DELETE /api/customers/:id — soft-delete (sync has no hard deletes; assets pattern).
+/// Blocked while the customer has open tickets or an unpaid balance on done jobs. Staff only.
+pub async fn delete_customer(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    require_staff(&state, &headers).map_err(|s| (s, "staff only".to_string()))?;
+
+    let open: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status NOT IN ('paid', 'cancelled')",
+    )
+    .bind(&id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
+    if open > 0 {
+        return Err((
+            StatusCode::CONFLICT,
+            format!("This customer has {} open job ticket(s). Close or finish them before deleting.", open),
+        ));
+    }
+    let balance: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(SUM(o.total - COALESCE((SELECT SUM(p.amount) FROM payments p \
+            WHERE p.order_id = o.id), 0)), 0) \
+         FROM orders o WHERE o.customer_id = ? AND o.status = 'done' \
+         AND o.total > COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.order_id = o.id), 0)",
+    )
+    .bind(&id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
+    if balance > 0 {
+        return Err((
+            StatusCode::CONFLICT,
+            "This customer still owes an open balance. Collect or settle it before deleting.".to_string(),
+        ));
+    }
+
+    let now = now_ms();
+    let result = sqlx::query("UPDATE customers SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+        .bind(now)
+        .bind(now)
+        .bind(&id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "delete failed".to_string()))?;
+    if result.rows_affected() == 0 {
+        return Err((StatusCode::NOT_FOUND, "customer not found".to_string()));
+    }
+    Ok(Json(json!({ "ok": true })))
 }

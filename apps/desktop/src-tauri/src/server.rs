@@ -192,13 +192,17 @@ pub async fn start_server(app: AppHandle, pool: Pool<Sqlite>) {
         .route("/api/expenses/linkable", get(financials::list_linkable_expenses))
         .route("/api/inventory/payables", get(inventory::list_payables))
         .route("/api/suppliers", get(suppliers::list_suppliers).post(suppliers::create_supplier))
+        .route("/api/suppliers/import", post(suppliers::import_suppliers))
         .route(
             "/api/suppliers/:id",
             get(suppliers::supplier_detail).put(suppliers::update_supplier),
         )
         .route("/api/customers/all", get(customers::customer_directory))
         .route("/api/customers/:id/detail", get(customers::customer_detail))
-        .route("/api/customers/:id", axum::routing::put(customers::update_customer))
+        .route(
+            "/api/customers/:id",
+            axum::routing::put(customers::update_customer).delete(customers::delete_customer),
+        )
         .route("/api/drawer/movement", post(financials::drawer_movement))
         .route("/api/drawer/report", get(financials::eod_report))
         .route("/api/reports/soa/:customer_id", get(financials::soa))

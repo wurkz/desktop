@@ -113,6 +113,80 @@ pub async fn create_supplier(
     fetch_one(&state, &id).await
 }
 
+#[derive(Deserialize)]
+pub struct ImportSuppliersReq {
+    suppliers: Vec<SupplierReq>,
+}
+
+/// POST /api/suppliers/import — bulk-create suppliers. Dedupe: skipped when the name already
+/// exists (case-insensitive — same rule as create/find-or-create) in the DB or earlier in the
+/// same file. Returns {imported, skipped, skipped_rows} — skipped_rows carry a reason
+/// (duplicate/invalid) for the caller to display; nothing about them is persisted.
+pub async fn import_suppliers(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Json(req): Json<ImportSuppliersReq>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    require_staff(&state, &headers).map_err(|s| (s, "staff only".to_string()))?;
+    let mut imported = 0u32;
+    let mut skipped_rows: Vec<Value> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for s in &req.suppliers {
+        let name = s.name.trim();
+        let skip = |reason: &str, skipped_rows: &mut Vec<Value>| {
+            skipped_rows.push(json!({
+                "name": name,
+                "contact_person": clean(&s.contact_person).unwrap_or_default(),
+                "phone": clean(&s.phone).unwrap_or_default(),
+                "address": clean(&s.address).unwrap_or_default(),
+                "notes": clean(&s.notes).unwrap_or_default(),
+                "reason": reason,
+            }));
+        };
+        if name.is_empty() {
+            skip("invalid (no name)", &mut skipped_rows);
+            continue;
+        }
+        let key = name.to_lowercase();
+        if seen.contains(&key) {
+            skip("duplicate (in file)", &mut skipped_rows);
+            continue;
+        }
+        let exists: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM suppliers WHERE name = ? COLLATE NOCASE")
+            .bind(name)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(0);
+        if exists > 0 {
+            skip("duplicate", &mut skipped_rows);
+            continue;
+        }
+        let now = now_ms();
+        let ok = sqlx::query(
+            "INSERT INTO suppliers (id, name, contact_person, phone, address, notes, created_at, updated_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(name)
+        .bind(clean(&s.contact_person))
+        .bind(clean(&s.phone))
+        .bind(clean(&s.address))
+        .bind(clean(&s.notes))
+        .bind(now)
+        .bind(now)
+        .execute(&state.pool)
+        .await
+        .is_ok();
+        if ok {
+            imported += 1;
+            seen.insert(key);
+        } else {
+            skip("invalid (insert failed)", &mut skipped_rows);
+        }
+    }
+    Ok(Json(json!({ "imported": imported, "skipped": skipped_rows.len(), "skipped_rows": skipped_rows })))
+}
+
 /// PUT /api/suppliers/:id — update contact details. Renames propagate to the denormalized
 /// display name on past receives. Staff only.
 pub async fn update_supplier(

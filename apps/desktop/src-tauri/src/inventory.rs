@@ -416,7 +416,9 @@ pub struct ImportCustomersReq {
 }
 
 /// POST /api/customers/import — bulk-create customers. Dedupe: skipped when the same
-/// name (case-insensitive) + phone combination already exists. Returns {imported, skipped}.
+/// name (case-insensitive) + phone combination already exists in the DB or earlier in the
+/// same file. Returns {imported, skipped, skipped_rows} — skipped_rows carry a reason
+/// (duplicate/invalid) for the caller to display; nothing about them is persisted.
 pub async fn import_customers(
     State(state): State<ApiState>,
     headers: HeaderMap,
@@ -425,15 +427,30 @@ pub async fn import_customers(
     require_staff(&state, &headers).map_err(|s| (s, "staff only".to_string()))?;
     let tenant = crate::api_data::tenant_id(&state).await;
     let mut imported = 0u32;
-    let mut skipped = 0u32;
+    let mut skipped_rows: Vec<Value> = Vec::new();
+    let mut seen: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
+    let clean = |o: &Option<String>| o.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     for c in &req.customers {
         let name = c.name.trim();
+        let phone = clean(&c.phone);
+        let skip = |reason: &str, skipped_rows: &mut Vec<Value>| {
+            skipped_rows.push(json!({
+                "name": name,
+                "phone": phone.clone().unwrap_or_default(),
+                "email": clean(&c.email).unwrap_or_default(),
+                "address": clean(&c.address).unwrap_or_default(),
+                "reason": reason,
+            }));
+        };
         if name.is_empty() {
-            skipped += 1;
+            skip("invalid (no name)", &mut skipped_rows);
             continue;
         }
-        let clean = |o: &Option<String>| o.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
-        let phone = clean(&c.phone);
+        let key = (name.to_lowercase(), phone.clone().unwrap_or_default());
+        if seen.contains(&key) {
+            skip("duplicate (in file)", &mut skipped_rows);
+            continue;
+        }
         let exists: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM customers WHERE name = ? COLLATE NOCASE AND COALESCE(phone,'') = COALESCE(?, '')",
         )
@@ -443,7 +460,7 @@ pub async fn import_customers(
         .await
         .unwrap_or(0);
         if exists > 0 {
-            skipped += 1;
+            skip("duplicate", &mut skipped_rows);
             continue;
         }
         let now = now_ms();
@@ -462,9 +479,14 @@ pub async fn import_customers(
         .execute(&state.pool)
         .await
         .is_ok();
-        if ok { imported += 1 } else { skipped += 1 }
+        if ok {
+            imported += 1;
+            seen.insert(key);
+        } else {
+            skip("invalid (insert failed)", &mut skipped_rows);
+        }
     }
-    Ok(Json(json!({ "imported": imported, "skipped": skipped })))
+    Ok(Json(json!({ "imported": imported, "skipped": skipped_rows.len(), "skipped_rows": skipped_rows })))
 }
 
 async fn fetch_item(state: &ApiState, id: &str) -> Result<Json<Value>, (StatusCode, String)> {

@@ -1,6 +1,6 @@
 # Phase 3 Backlog — Commerce Module
 
-> **Status:** ~75% — inventory management (page + CRUD + stock adjustments + CSV import), parts linking, and stock deduction all done; 001 superseded by D23; 008 mostly done. Remaining: billing/payment methods (007, deferred), **VAT-inclusive pricing option (009)**.  
+> **Status:** ~75% — inventory management (page + CRUD + stock adjustments + CSV import), parts linking, and stock deduction all done; 001 superseded by D23; 008 mostly done. Remaining: billing/payment methods (007, deferred), **VAT-inclusive pricing option (009)**, **BACK-3-020 full customer management page + CSV import w/ skipped-duplicates report** *(implemented 2026-07-10, pending verification)*.  
 > **Scope:** Inventory Management, Parts Catalog, Billing, Invoicing, Tax, Payments  
 > **Completed items live in:** [`phase-3-completed.md`](./phase-3-completed.md)
 
@@ -304,3 +304,87 @@ deliberately not duplicated on the desktop as a subscription differentiator (own
 - [ ] Settle from supplier profile returns to the profile; payable states correct incl. partial
 - [ ] Collect from customer profile lands on the right ticket's Billing card
 - [ ] Customer notes persist and render on the profile
+
+---
+
+## BACK-3-020 · Full Customer Management Page (+ CSV import with skipped-duplicates report) · *implemented, pending verification*
+
+**Priority:** 🟡 Medium (owner request 2026-07-10 — promote the customer directory into a complete
+management surface)
+
+**Build notes (2026-07-10, all scope items built same day):**
+- **Skipped-rows report:** both import endpoints now return
+  `{imported, skipped, skipped_rows: [{…, reason}]}` — reasons `duplicate`, `duplicate (in file)`,
+  `invalid (no name)`. In-file dedupe added (customers: name+phone; suppliers: name, both
+  case-insensitive). Shared `ImportResultDialog` (`components/import-result-dialog.tsx`) shows
+  counts + a monospace CSV block with a Copy button; the skip list lives only in dialog state.
+- **Soft-delete:** migration `0028_customer_soft_delete.sql` (`customers.deleted_at`, assets
+  pattern); `DELETE /api/customers/:id` staff-gated, 409 on open tickets or unpaid done-job
+  balance; directory + typeahead search filter `deleted_at IS NULL`; restore whitelist updated.
+  **Protocol note:** column rides the `SELECT *` sync push — cloud silently drops it until a
+  Part-2 cloud change adds it (BACK-4-016/017 silent-drop pattern).
+- **Directory:** "+ New" dialog (navigates to the new profile), client-side sort select
+  (name/newest/balance/lifetime), "Has balance" filter chip, "Export CSV" of the visible
+  (searched/filtered/sorted) rows — money exported as decimal pesos.
+- Profile header gains a delete button + confirm dialog (server errors surfaced via toast).
+**Area:** `apps/desktop/src/pages/customers.tsx`, `customer-detail.tsx`,
+`src/lib/parties-api.ts` / `customers-api.ts`, `import_customers` + customer handlers in
+`src-tauri/src/api_data.rs`, Settings Data Import card
+**Origin:** BACK-3-019 delivered the directory (search, balance/lifetime badges) + profile (edit
+contact/notes, assets, jobs, SOA). But customers can still only be *created* through the intake
+flow's inline picker, only *imported* from Settings, and the import reports bare counts
+(`imported: n, skipped: n`) with no way to see which rows were dropped.
+
+**Scope — make `/customers` the one place to manage customers:**
+
+1. **Add customer from the page** — a "+ New Customer" action on the directory opening the
+   standard create form (name required; phone/email/address/notes optional). Reuses the existing
+   `POST /api/customers`; no new endpoint needed.
+2. **Directory upgrades** — sort control (name / newest / highest balance / lifetime paid) and a
+   quick filter for "has open balance". Keep the page mobile-friendly; current search + badges stay.
+3. **Delete / archive** — soft-delete a customer from the profile (staff-only; follow the asset
+   soft-delete pattern: blocked while the customer has open tickets or a nonzero balance; hidden
+   from directory + pickers afterwards). Sync has no hard deletes — this must be a flag column
+   (new migration + protocol note if the column syncs).
+4. **CSV import on the customers page** with a **skipped-duplicates report**:
+   - ~~Move the entry point here~~ ✅ **Done early (2026-07-10, owner decision):** the Settings
+     "Data Import" card was removed and the import now lives as an admin-only **Import CSV** button
+     in the `/customers` header (same counts-only note for now; directory refreshes after import).
+     Remaining work in this item = the skipped-rows report below.
+   - ✅ **Also done early (2026-07-10, owner request):** matching admin-only **Import CSV** on
+     `/suppliers` — new `POST /api/suppliers/import` (`import_suppliers` in `suppliers.rs`),
+     dedupe by name case-insensitive (the suppliers uniqueness rule), columns
+     `name` (required) + `contact_person, phone, address, notes`. The skipped-rows report below
+     should cover BOTH imports when it lands.
+   - Parsing reuses `lib/csv.ts` + the existing header aliases (`name|customer|customer_name|full_name`,
+     `phone|mobile|contact`, …).
+   - **Server change:** `POST /api/customers/import` must return the *skipped rows themselves*
+     (with a reason: `duplicate` vs `invalid`, and for duplicates the name+phone it collided with),
+     not just counts. Dedupe rule stays the existing server-side name+phone match.
+   - **UI:** after import, show a result dialog — "{n} imported, {m} skipped". Skipped rows render
+     as a list AND a monospace CSV-formatted text block (`name,phone,email,address,reason`) with a
+     **Copy** button (clipboard), matching the copy-button pattern already in Settings. **Display
+     only — the skip list is NOT persisted anywhere**; closing the dialog discards it.
+5. **CSV export (nice-to-have)** — "Export CSV" of the current directory (respecting the active
+   search/filter) so the owner can round-trip their list. Cut if it bloats the item.
+
+**Design notes:**
+- Stay behind the existing staff-only gating (mechanics see no Customers tile — BACK-3-019 AC).
+- Import remains all-or-per-row over the single existing endpoint; no partial-failure transactions
+  needed beyond what's there today.
+- Duplicate check is against the DB *and* within the file itself (a file listing the same customer
+  twice should import once and report the second row as a duplicate).
+
+**Acceptance Criteria:**
+- [ ] "+ New Customer" on `/customers` creates a customer (name required) and it appears in the
+      directory and in intake pickers immediately
+- [ ] Directory sortable (name/newest/balance/lifetime) with a "has balance" filter; search unchanged
+- [ ] Customer soft-delete: staff-only, blocked with open tickets or balance > 0, removed from
+      directory + pickers, historical jobs/reports unaffected
+- [ ] CSV import runs from the customers page; duplicates (name+phone, DB **and** in-file) are
+      skipped, valid new rows import
+- [ ] Result dialog lists every skipped row with its reason, plus a copy-to-clipboard CSV block;
+      nothing about skipped rows is persisted after the dialog closes
+- [ ] Import of a clean file, a file of all-duplicates, and a mixed file each report correct counts
+- [x] Import entry point lives on `/customers` (admin-only); the Settings "Data Import" card is
+      removed (done early, 2026-07-10)

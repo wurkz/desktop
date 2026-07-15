@@ -183,7 +183,7 @@ pub async fn search_customers(
         return Ok(Json(vec![]));
     }
     let like = format!("%{}%", q);
-    let rows = sqlx::query("SELECT * FROM customers WHERE name LIKE ? OR phone LIKE ? LIMIT 10")
+    let rows = sqlx::query("SELECT * FROM customers WHERE deleted_at IS NULL AND (name LIKE ? OR phone LIKE ?) LIMIT 10")
         .bind(&like)
         .bind(&like)
         .fetch_all(&state.pool)

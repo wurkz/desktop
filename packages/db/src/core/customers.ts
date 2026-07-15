@@ -13,6 +13,7 @@ export interface CustomersTable {
     notes: Nullable<string>; // staff-facing institutional memory (migration 0026)
     created_at: number;
     updated_at: number;
+    deleted_at: Nullable<number>; // soft-delete (migration 0028) — hidden from directory/pickers
 }
 
 export type Customer = Selectable<CustomersTable>;

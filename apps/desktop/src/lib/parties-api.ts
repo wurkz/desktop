@@ -106,6 +106,18 @@ export function updateSupplier(id: string, input: SupplierInput): Promise<Suppli
     return api.put<Supplier>(`/api/suppliers/${id}`, input);
 }
 
+// Bulk CSV import (rows already parsed client-side). Dedupes by name (case-insensitive)
+// server-side (against the DB and within the batch). skipped_rows are display-only.
+export interface SupplierImportResult {
+    imported: number;
+    skipped: number;
+    skipped_rows: Record<string, string>[]; // name, contact_person, phone, address, notes, reason
+}
+
+export function importSuppliers(suppliers: SupplierInput[]): Promise<SupplierImportResult> {
+    return api.post<SupplierImportResult>("/api/suppliers/import", { suppliers });
+}
+
 export interface SupplierReceive {
     id: string;
     item_name: string;

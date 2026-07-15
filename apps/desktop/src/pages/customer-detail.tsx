@@ -10,7 +10,7 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@zorviz/ui";
-import { ArrowLeft, Pencil, FileText, Car } from "lucide-react";
+import { ArrowLeft, Pencil, FileText, Car, Trash2 } from "lucide-react";
 import { formatMoney } from "@zorviz/core";
 import {
     customerDetail,
@@ -18,6 +18,8 @@ import {
     type CustomerDetail,
     type CustomerAsset,
 } from "../lib/parties-api";
+import { deleteCustomer } from "../lib/customers-api";
+import { ApiError } from "../lib/api";
 import { soaData } from "../lib/reports-api";
 import { soaPdf } from "../lib/report-pdf";
 import { StatusBadge } from "../components/status-badge";
@@ -50,6 +52,8 @@ export default function CustomerDetailPage() {
     const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", notes: "" });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     const refresh = useCallback(() => {
         if (id) customerDetail(id).then(setData).catch(() => toast("Couldn't load the customer.", "error"));
@@ -102,6 +106,20 @@ export default function CustomerDetailPage() {
         }
     };
 
+    const confirmDelete = async () => {
+        setDeleting(true);
+        try {
+            await deleteCustomer(c.id);
+            toast("Customer deleted.", "success");
+            navigate("/customers");
+        } catch (e) {
+            setDeleteOpen(false);
+            toast(e instanceof ApiError && e.message ? e.message : "Could not delete the customer.", "error");
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-background">
             <header className="px-4 py-3 bg-card shadow-sm flex items-center gap-3">
@@ -111,6 +129,15 @@ export default function CustomerDetailPage() {
                 <h1 className="text-lg font-bold flex-1 min-w-0 truncate">{c.name}</h1>
                 <Button size="sm" variant="outline" onClick={openEdit}>
                     <Pencil className="w-4 h-4 mr-1" /> Edit
+                </Button>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteOpen(true)}
+                    aria-label="Delete customer"
+                >
+                    <Trash2 className="w-4 h-4" />
                 </Button>
             </header>
 
@@ -188,6 +215,25 @@ export default function CustomerDetailPage() {
                     ))}
                 </div>
             </main>
+
+            <Dialog open={deleteOpen} onOpenChange={(o) => { if (!deleting) setDeleteOpen(o); }}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Delete {c.name}?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        The customer is removed from the directory and pickers. Their past jobs and
+                        history are kept. This is blocked while they have open tickets or an unpaid
+                        balance.
+                    </p>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+                        <Button variant="destructive" onClick={() => void confirmDelete()} disabled={deleting}>
+                            {deleting ? "Deleting…" : "Delete"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={editOpen} onOpenChange={(o) => { if (!saving) setEditOpen(o); }}>
                 <DialogContent className="max-w-sm">

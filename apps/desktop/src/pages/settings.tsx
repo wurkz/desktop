@@ -9,8 +9,6 @@ import { useAppConfigStore } from "../stores/app-config";
 import { useDyslexiaStore } from "../stores/dyslexia";
 import { AssetTypesSettings } from "../features/repair/components/AssetTypesSettings";
 import { logoUrl, uploadLogo, deleteLogo } from "../lib/logo-api";
-import { importCustomers } from "../lib/customers-api";
-import { parseCsv, pick } from "../lib/csv";
 
 type CustomField = { label: string; value: string };
 
@@ -64,40 +62,6 @@ export default function SettingsPage() {
     const fileInput = useRef<HTMLInputElement>(null);
     const [logoBusy, setLogoBusy] = useState(false);
     const [logoErr, setLogoErr] = useState("");
-
-    // Customers CSV import
-    const custCsvInput = useRef<HTMLInputElement>(null);
-    const [custImportNote, setCustImportNote] = useState("");
-    const [custImportBusy, setCustImportBusy] = useState(false);
-
-    const onCustomersCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        e.target.value = "";
-        if (!file) return;
-        setCustImportBusy(true);
-        setCustImportNote("");
-        try {
-            const rows = parseCsv(await file.text());
-            const parsed = rows
-                .map((r) => ({
-                    name: pick(r, "name", "customer", "customer_name", "full_name"),
-                    phone: pick(r, "phone", "mobile", "contact", "contact_no", "phone_number") || undefined,
-                    email: pick(r, "email", "e-mail") || undefined,
-                    address: pick(r, "address") || undefined,
-                }))
-                .filter((r) => r.name);
-            if (parsed.length === 0) {
-                setCustImportNote("No usable rows found. Expected a header row with at least a `name` column.");
-                return;
-            }
-            const res = await importCustomers(parsed);
-            setCustImportNote(`Import complete: ${res.imported} added, ${res.skipped} skipped (duplicates/invalid).`);
-        } catch (err) {
-            setCustImportNote(err instanceof Error ? `Import failed: ${err.message}` : "Import failed.");
-        } finally {
-            setCustImportBusy(false);
-        }
-    };
 
     const onLogoPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -493,28 +457,6 @@ export default function SettingsPage() {
                 </Card>
 
                 <AssetTypesSettings readOnly={ro} />
-
-                {!ro && (
-                    <Card>
-                        <CardHeader className="flex-row items-center gap-2 space-y-0">
-                            <ListPlus className="w-5 h-5 text-primary" />
-                            <CardTitle className="text-base">Data Import</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <p className="text-sm text-muted-foreground">
-                                Onboard an existing <strong>customer list</strong> from a CSV file. Columns:{" "}
-                                <span className="font-mono">name</span> (required),{" "}
-                                <span className="font-mono">phone, email, address</span>. Duplicates (same name + phone)
-                                are skipped. Parts/inventory CSV import lives on the <strong>Inventory</strong> page.
-                            </p>
-                            <input ref={custCsvInput} type="file" accept=".csv,text/csv" className="hidden" onChange={onCustomersCsv} />
-                            <Button variant="outline" size="sm" disabled={custImportBusy} onClick={() => custCsvInput.current?.click()}>
-                                {custImportBusy ? "Importing…" : "Import Customers CSV"}
-                            </Button>
-                            {custImportNote && <p className="text-sm text-muted-foreground">{custImportNote}</p>}
-                        </CardContent>
-                    </Card>
-                )}
 
                 <Card>
                     <CardHeader className="flex-row items-center gap-2 space-y-0">
